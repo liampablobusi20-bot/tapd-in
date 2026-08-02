@@ -1,11 +1,20 @@
 "use client";
 
-export function MediaUploadButton({ className }: { className?: string }) {
+export function MediaUploadButton({
+  className,
+  onFile,
+  disabled,
+}: {
+  className?: string;
+  onFile: (file: File) => void;
+  disabled?: boolean;
+}) {
   return (
     <label
       className={
-        className ??
-        "flex-shrink-0 cursor-pointer rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-zinc-600 shadow-sm hover:border-zinc-400"
+        (className ??
+          "flex-shrink-0 cursor-pointer rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-zinc-600 shadow-sm hover:border-zinc-400") +
+        (disabled ? " pointer-events-none opacity-50" : "")
       }
     >
       <svg
@@ -34,14 +43,14 @@ export function MediaUploadButton({ className }: { className?: string }) {
       </svg>
       <input
         type="file"
-        name="media"
         accept="image/*,video/*"
         capture="environment"
         className="hidden"
+        disabled={disabled}
         onChange={(e) => {
-          if (e.currentTarget.files && e.currentTarget.files.length > 0) {
-            e.currentTarget.form?.requestSubmit();
-          }
+          const file = e.currentTarget.files?.[0];
+          e.currentTarget.value = "";
+          if (file) onFile(file);
         }}
       />
     </label>

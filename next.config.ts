@@ -7,14 +7,10 @@ const nextConfig: NextConfig = {
   // segment-by-segment, not as a real CIDR range — covers the common
   // home-router ranges.
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
-  // Photo/video uploads go straight through a Server Action (createEntry /
-  // addGuestEntry), which Next.js caps at 1MB by default — comfortably
-  // fits a phone photo but not a video clip. Raised to fit both.
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "25mb",
-    },
-  },
+  // Photo/video bytes upload directly from the browser to Supabase Storage
+  // via a signed URL (see src/hooks/use-media-upload.ts) — they never pass
+  // through a Server Action body, which on Vercel is hard-capped around
+  // 4.5MB regardless of this setting. Server Actions here only carry text.
 };
 
 export default nextConfig;

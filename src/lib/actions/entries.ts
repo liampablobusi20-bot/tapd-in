@@ -35,30 +35,12 @@ export async function createEntry(
   }
 
   const bodyText = String(formData.get("body_text") ?? "").trim();
-  const media = formData.get("media");
-  const hasMedia = media instanceof File && media.size > 0;
+  const mediaUrl = String(formData.get("media_url") ?? "").trim() || null;
+  const mediaTypeRaw = String(formData.get("media_type") ?? "").trim();
+  const mediaType =
+    mediaTypeRaw === "video" || mediaTypeRaw === "image" ? mediaTypeRaw : null;
 
-  if (!bodyText && !hasMedia) return;
-
-  let mediaUrl: string | null = null;
-  let mediaType: "image" | "video" | null = null;
-
-  if (hasMedia) {
-    const file = media as File;
-    mediaType = file.type.startsWith("video/") ? "video" : "image";
-    const path = `${calendarId}/${calendarItemId}/${crypto.randomUUID()}-${file.name}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("entry-photos")
-      .upload(path, file, { contentType: file.type });
-
-    if (uploadError) throw new Error(uploadError.message);
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("entry-photos").getPublicUrl(path);
-    mediaUrl = publicUrl;
-  }
+  if (!bodyText && !mediaUrl) return;
 
   const { error } = await supabase.from("entries").insert({
     calendar_item_id: calendarItemId,
