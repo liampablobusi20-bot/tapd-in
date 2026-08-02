@@ -19,8 +19,8 @@ export function CalendarName({
       onChange={(e) => setName(e.target.value)}
       onBlur={() => {
         if (name.trim() && name !== initialName) {
-          startTransition(() => {
-            renameCalendar(calendarId, name.trim());
+          startTransition(async () => {
+            await renameCalendar(calendarId, name.trim());
           });
         }
       }}

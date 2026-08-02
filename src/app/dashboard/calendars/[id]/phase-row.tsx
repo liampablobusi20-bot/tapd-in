@@ -22,27 +22,28 @@ export function PhaseRow({
   const [label, setLabel] = useState(phase.label);
   const [date, setDate] = useState(phase.target_date ?? "");
   const [notes, setNotes] = useState(phase.notes ?? "");
+  const [isRemoving, startRemoveTransition] = useTransition();
   const [, startTransition] = useTransition();
 
   function saveLabel() {
     if (label.trim() && label !== phase.label) {
-      startTransition(() => {
-        updateItem(phase.id, calendarId, { label: label.trim() });
+      startTransition(async () => {
+        await updateItem(phase.id, calendarId, { label: label.trim() });
       });
     }
   }
 
   function saveDate(value: string) {
     setDate(value);
-    startTransition(() => {
-      updateItem(phase.id, calendarId, { target_date: value || null });
+    startTransition(async () => {
+      await updateItem(phase.id, calendarId, { target_date: value || null });
     });
   }
 
   function saveNotes() {
     if (notes !== (phase.notes ?? "")) {
-      startTransition(() => {
-        updateItem(phase.id, calendarId, { notes });
+      startTransition(async () => {
+        await updateItem(phase.id, calendarId, { notes });
       });
     }
   }
@@ -59,13 +60,14 @@ export function PhaseRow({
         />
         <button
           onClick={() =>
-            startTransition(() => {
-              deleteItem(phase.id, calendarId);
+            startRemoveTransition(async () => {
+              await deleteItem(phase.id, calendarId);
             })
           }
-          className="flex-shrink-0 rounded-md px-1.5 py-1 text-xs font-medium text-zinc-400 hover:bg-red-50 hover:text-red-600"
+          disabled={isRemoving}
+          className="flex-shrink-0 rounded-md px-1.5 py-1 text-xs font-medium text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
         >
-          Remove
+          {isRemoving ? "Removing…" : "Remove"}
         </button>
       </div>
 

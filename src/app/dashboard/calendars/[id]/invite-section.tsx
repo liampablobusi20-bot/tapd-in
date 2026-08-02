@@ -85,12 +85,12 @@ function LinkRow({
         </button>
         <button
           onClick={() =>
-            startTransition(() => revokeGuestLink(link.id, calendarId))
+            startTransition(async () => await revokeGuestLink(link.id, calendarId))
           }
           disabled={pending}
           className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
         >
-          Revoke
+          {pending ? "Revoking…" : "Revoke"}
         </button>
       </div>
     </li>

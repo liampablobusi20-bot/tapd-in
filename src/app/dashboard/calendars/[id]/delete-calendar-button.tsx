@@ -8,11 +8,11 @@ export function DeleteCalendarButton({ calendarId }: { calendarId: string }) {
 
   return (
     <button
-      onClick={() => startTransition(() => deleteCalendar(calendarId))}
+      onClick={() => startTransition(async () => await deleteCalendar(calendarId))}
       disabled={pending}
       className="text-sm font-medium text-zinc-400 hover:text-red-600 disabled:opacity-50"
     >
-      Delete calendar
+      {pending ? "Deleting…" : "Delete calendar"}
     </button>
   );
 }
