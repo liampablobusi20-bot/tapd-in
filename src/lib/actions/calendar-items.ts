@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { notifyGuestsOfChange } from "@/lib/notify";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -31,6 +33,7 @@ export async function createItem(calendarId: string, targetDate?: string | null)
   if (error) throw new Error(error.message);
 
   revalidatePath(`/dashboard/calendars/${calendarId}`);
+  after(() => notifyGuestsOfChange(calendarId, "A new phase was added."));
 }
 
 export async function updateItem(
@@ -48,6 +51,7 @@ export async function updateItem(
   if (error) throw new Error(error.message);
 
   revalidatePath(`/dashboard/calendars/${calendarId}`);
+  after(() => notifyGuestsOfChange(calendarId, "A phase was updated."));
 }
 
 export async function deleteItem(itemId: string, calendarId: string) {
@@ -61,4 +65,5 @@ export async function deleteItem(itemId: string, calendarId: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath(`/dashboard/calendars/${calendarId}`);
+  after(() => notifyGuestsOfChange(calendarId, "A phase was removed."));
 }

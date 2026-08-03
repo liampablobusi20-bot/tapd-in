@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveGuestLink } from "@/lib/guest";
+import { notifyGuestsOfChange } from "@/lib/notify";
 
 export async function addGuestEntry(
   token: string,
@@ -45,4 +47,7 @@ export async function addGuestEntry(
   if (error) throw new Error(error.message);
 
   revalidatePath(`/c/${token}`);
+  after(() =>
+    notifyGuestsOfChange(link.calendar_id, `${authorLabel} posted an update.`, token)
+  );
 }
