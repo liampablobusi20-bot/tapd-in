@@ -8,6 +8,7 @@ type GuestLink = {
   token: string;
   permission: "view" | "comment";
   contact_name: string | null;
+  notify_via: "email" | "sms" | null;
   created_at: string;
 };
 
@@ -67,8 +68,13 @@ function LinkRow({
             {link.contact_name || "Unnamed guest"}
           </p>
           <p className="text-xs text-zinc-500">
-            {link.permission === "view" ? "View only" : "Can comment"} ·
-            Created {new Date(link.created_at).toLocaleDateString("en-US")}
+            {link.permission === "view" ? "View only" : "Can comment"} ·{" "}
+            {link.notify_via === "email"
+              ? "Notifies by email"
+              : link.notify_via === "sms"
+                ? "Notifies by text"
+                : "No notifications"}{" "}
+            · Created {new Date(link.created_at).toLocaleDateString("en-US")}
           </p>
         </div>
       </div>
@@ -189,11 +195,19 @@ export function InviteSection({
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative w-40 flex-shrink-0">
             <select name="permission" defaultValue="view" className={selectClass}>
               <option value="view">View only</option>
               <option value="comment">Can comment</option>
+            </select>
+            <ChevronIcon />
+          </div>
+          <div className="relative w-48 flex-shrink-0">
+            <select name="notify_via" defaultValue="" className={selectClass}>
+              <option value="">No notifications</option>
+              <option value="email">Notify by email</option>
+              <option value="sms">Notify by text</option>
             </select>
             <ChevronIcon />
           </div>

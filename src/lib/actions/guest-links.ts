@@ -47,6 +47,16 @@ export async function createGuestLink(
   const phone = String(formData.get("phone") ?? "").trim() || null;
   const email = String(formData.get("email") ?? "").trim() || null;
 
+  const notifyViaRaw = String(formData.get("notify_via") ?? "").trim();
+  const notifyVia =
+    notifyViaRaw === "email" || notifyViaRaw === "sms" ? notifyViaRaw : null;
+  if (notifyVia === "email" && !email) {
+    return { error: "Add an email address to notify by email." };
+  }
+  if (notifyVia === "sms" && !phone) {
+    return { error: "Add a phone number to notify by text." };
+  }
+
   const token = crypto.randomUUID().replace(/-/g, "");
 
   const { error } = await supabase.from("guest_links").insert({
@@ -56,6 +66,7 @@ export async function createGuestLink(
     contact_name: contactName,
     phone,
     email,
+    notify_via: notifyVia,
   });
 
   if (error) return { error: error.message };

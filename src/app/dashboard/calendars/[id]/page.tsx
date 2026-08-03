@@ -40,7 +40,7 @@ export default async function CalendarPage({
 
   const { data: guestLinks } = await supabase
     .from("guest_links")
-    .select("id, token, permission, contact_name, created_at")
+    .select("id, token, permission, contact_name, notify_via, created_at")
     .eq("calendar_id", id)
     .is("revoked_at", null)
     .order("created_at", { ascending: false });
