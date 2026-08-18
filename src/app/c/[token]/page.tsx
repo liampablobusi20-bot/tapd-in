@@ -76,7 +76,12 @@ export default async function GuestCalendarPage({
             Updated {formatRelativeTime(lastUpdated)}
           </p>
         )}
-        <NotifyToggle token={token} notifyVia={link.notify_via} phone={link.phone} />
+        <NotifyToggle
+          token={token}
+          notifyVia={link.notify_via}
+          phone={link.phone}
+          email={link.email}
+        />
       </header>
 
       <div className="flex flex-col gap-3 px-4 py-4">

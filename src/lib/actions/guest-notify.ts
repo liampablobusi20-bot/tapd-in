@@ -11,6 +11,8 @@ function normalizePhone(raw: string): string | null {
   return null;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export type GuestNotifyState = { error?: string } | undefined;
 
 export async function setGuestSmsNotify(
@@ -28,6 +30,27 @@ export async function setGuestSmsNotify(
   const { error } = await supabase
     .from("guest_links")
     .update({ phone, notify_via: "sms" })
+    .eq("token", token);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/c/${token}`);
+}
+
+export async function setGuestEmailNotify(
+  token: string,
+  _prevState: GuestNotifyState,
+  formData: FormData
+): Promise<GuestNotifyState> {
+  const link = await resolveGuestLink(token);
+  if (!link) throw new Error("Not found.");
+
+  const email = String(formData.get("email") ?? "").trim();
+  if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("guest_links")
+    .update({ email, notify_via: "email" })
     .eq("token", token);
   if (error) return { error: error.message };
 
