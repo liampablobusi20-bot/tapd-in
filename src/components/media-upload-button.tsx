@@ -44,7 +44,6 @@ export function MediaUploadButton({
       <input
         type="file"
         accept="image/*,video/*"
-        capture="environment"
         className="hidden"
         disabled={disabled}
         onChange={(e) => {
