@@ -40,7 +40,9 @@ export async function createEntry(
   const mediaUrl = String(formData.get("media_url") ?? "").trim() || null;
   const mediaTypeRaw = String(formData.get("media_type") ?? "").trim();
   const mediaType =
-    mediaTypeRaw === "video" || mediaTypeRaw === "image" ? mediaTypeRaw : null;
+    mediaTypeRaw === "video" || mediaTypeRaw === "image" || mediaTypeRaw === "file"
+      ? mediaTypeRaw
+      : null;
 
   if (!bodyText && !mediaUrl) return;
 

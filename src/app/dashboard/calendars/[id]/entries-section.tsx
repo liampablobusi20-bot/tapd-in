@@ -28,7 +28,10 @@ export function EntriesSection({
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [media, setMedia] = useState<{ url: string; type: "image" | "video" } | null>(
+  const [media, setMedia] = useState<{
+    url: string;
+    type: "image" | "video" | "file";
+  } | null>(
     null
   );
 
@@ -45,8 +48,10 @@ export function EntriesSection({
       const { mediaUrl, mediaType } = await upload(file);
       setMedia({ url: mediaUrl, type: mediaType });
       requestAnimationFrame(() => formRef.current?.requestSubmit());
-    } catch {
-      setError("Couldn't upload that file. Try again.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Couldn't upload that file. Try again."
+      );
     }
   }
 
@@ -72,7 +77,11 @@ export function EntriesSection({
               {entry.photo_url && (
                 <MediaThumbnail
                   src={entry.photo_url}
-                  type={entry.media_type === "video" ? "video" : "image"}
+                  type={
+                    entry.media_type === "video" || entry.media_type === "file"
+                      ? entry.media_type
+                      : "image"
+                  }
                 />
               )}
               <div>

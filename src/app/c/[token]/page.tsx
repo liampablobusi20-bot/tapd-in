@@ -119,8 +119,16 @@ export default async function GuestCalendarPage({
                       {entry.photo_url && (
                         <MediaThumbnail
                           src={entry.photo_url}
-                          type={entry.media_type === "video" ? "video" : "image"}
-                          className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-zinc-200"
+                          type={
+                            entry.media_type === "video" || entry.media_type === "file"
+                              ? entry.media_type
+                              : "image"
+                          }
+                          className={
+                            entry.media_type === "file"
+                              ? undefined
+                              : "h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-zinc-200"
+                          }
                         />
                       )}
                       <div>

@@ -124,7 +124,7 @@ export function DayPanel({
             onClick={onClose}
             className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
           >
-            Add phase
+            Done
           </button>
         </div>
       </div>

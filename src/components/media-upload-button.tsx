@@ -43,7 +43,6 @@ export function MediaUploadButton({
       </svg>
       <input
         type="file"
-        accept="image/*,video/*"
         className="hidden"
         disabled={disabled}
         onChange={(e) => {

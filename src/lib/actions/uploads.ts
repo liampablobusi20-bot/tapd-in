@@ -5,8 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveGuestLink } from "@/lib/guest";
 
-function mediaTypeFor(contentType: string): "image" | "video" {
-  return contentType.startsWith("video/") ? "video" : "image";
+function mediaTypeFor(contentType: string): "image" | "video" | "file" {
+  if (contentType.startsWith("image/")) return "image";
+  if (contentType.startsWith("video/")) return "video";
+  return "file";
 }
 
 // Mints a Supabase Storage signed upload URL instead of accepting the file

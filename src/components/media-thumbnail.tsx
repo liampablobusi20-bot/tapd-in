@@ -2,16 +2,59 @@
 
 import { useState } from "react";
 
+// Uploaded object keys are `{36-char uuid}-{original filename}`, so the
+// filename can be recovered from the public URL without a schema change.
+function filenameFromUrl(url: string): string {
+  try {
+    const path = decodeURIComponent(new URL(url).pathname);
+    const last = path.split("/").pop() ?? "file";
+    return last.length > 37 ? last.slice(37) : last;
+  } catch {
+    return "file";
+  }
+}
+
+function FileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 flex-shrink-0">
+      <path
+        d="M6 2.5h8l4 4v14a1 1 0 01-1 1H6a1 1 0 01-1-1v-17a1 1 0 011-1z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M14 2.5V7a1 1 0 001 1h4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function MediaThumbnail({
   src,
   type,
   className,
 }: {
   src: string;
-  type: "image" | "video";
+  type: "image" | "video" | "file";
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+
+  if (type === "file") {
+    return (
+      <a
+        href={src}
+        target="_blank"
+        rel="noreferrer"
+        className={
+          className ??
+          "flex max-w-[10rem] items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
+        }
+      >
+        <FileIcon />
+        <span className="truncate">{filenameFromUrl(src)}</span>
+      </a>
+    );
+  }
 
   return (
     <>

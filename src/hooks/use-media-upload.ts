@@ -3,7 +3,13 @@
 import { useCallback, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type SignedUpload = { path: string; token: string; mediaType: "image" | "video" };
+type SignedUpload = {
+  path: string;
+  token: string;
+  mediaType: "image" | "video" | "file";
+};
+
+const MAX_FILE_SIZE = 300 * 1024 * 1024; // 300MB — matches the Supabase bucket limit
 
 // Uploads a file straight from the browser to Supabase Storage using a
 // signed URL minted by a Server Action — the file bytes never pass through
@@ -15,6 +21,9 @@ export function useMediaUpload(
 
   const upload = useCallback(
     async (file: File) => {
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error("That file is too large — the limit is 300MB.");
+      }
       setUploading(true);
       try {
         const { path, token, mediaType } = await getUploadUrl(file.name, file.type);

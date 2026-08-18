@@ -18,7 +18,10 @@ export function GuestEntryForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [media, setMedia] = useState<{ url: string; type: "image" | "video" } | null>(
+  const [media, setMedia] = useState<{
+    url: string;
+    type: "image" | "video" | "file";
+  } | null>(
     null
   );
 
@@ -35,8 +38,10 @@ export function GuestEntryForm({
       const { mediaUrl, mediaType } = await upload(file);
       setMedia({ url: mediaUrl, type: mediaType });
       requestAnimationFrame(() => formRef.current?.requestSubmit());
-    } catch {
-      setError("Couldn't upload that file. Try again.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Couldn't upload that file. Try again."
+      );
     }
   }
 
