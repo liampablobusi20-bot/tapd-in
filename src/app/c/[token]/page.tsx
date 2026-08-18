@@ -4,6 +4,7 @@ import { formatRelativeTime } from "@/lib/format-relative-time";
 import { MediaThumbnail } from "@/components/media-thumbnail";
 import { GuestEntryForm } from "./guest-entry-form";
 import { NotifyToggle } from "./notify-toggle";
+import { GuestMenu } from "./guest-menu";
 
 export default async function GuestCalendarPage({
   params,
@@ -65,7 +66,8 @@ export default async function GuestCalendarPage({
   return (
     <div className="min-h-svh bg-zinc-50 pb-16">
       <header className="border-b border-zinc-200 bg-white px-5 py-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <GuestMenu />
+        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-zinc-500">
           Shared project calendar
         </p>
         <h1 className="mt-0.5 text-xl font-semibold text-zinc-900">
