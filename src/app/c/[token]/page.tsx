@@ -3,6 +3,7 @@ import { resolveGuestLink } from "@/lib/guest";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { MediaThumbnail } from "@/components/media-thumbnail";
 import { GuestEntryForm } from "./guest-entry-form";
+import { NotifyToggle } from "./notify-toggle";
 
 export default async function GuestCalendarPage({
   params,
@@ -75,6 +76,7 @@ export default async function GuestCalendarPage({
             Updated {formatRelativeTime(lastUpdated)}
           </p>
         )}
+        <NotifyToggle token={token} notifyVia={link.notify_via} phone={link.phone} />
       </header>
 
       <div className="flex flex-col gap-3 px-4 py-4">
