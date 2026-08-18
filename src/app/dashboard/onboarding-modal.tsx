@@ -1,60 +1,39 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { completeOnboarding } from "@/lib/actions/onboarding";
+import { AddToHomeScreenButton } from "@/components/add-to-home-screen-button";
 
-type Platform = "ios" | "android" | "other";
-
-function detectPlatform(): Platform {
-  const ua = navigator.userAgent;
-  if (/iPad|iPhone|iPod/.test(ua)) return "ios";
-  if (/Android/.test(ua)) return "android";
-  return "other";
-}
-
-function buildSteps(platform: Platform) {
-  return [
-    {
-      title: "Welcome to Tapd In",
-      body: "A shared project calendar you can send to clients and subs — no app or account needed on their end. Here's a quick walkthrough.",
-    },
-    {
-      title: "Create a calendar",
-      body: "Each project gets its own calendar. Add phases with a name, target date, and notes — that becomes the schedule your guests see.",
-    },
-    {
-      title: "Invite people",
-      body: "From a calendar, click “Invite people” to generate a link. Choose view-only or comment access — no login required on their end.",
-    },
-    {
-      title: "Updates go out automatically",
-      body: "Whenever you or a guest post an update, anyone who's opted into notifications gets a text or email pointing back to the calendar.",
-    },
-    {
-      title: "Add to your home screen",
-      body:
-        platform === "ios"
-          ? "On iPhone: tap the Share icon in Safari, scroll down, then tap “Add to Home Screen.”"
-          : platform === "android"
-            ? "On Android: tap the ⋮ menu in Chrome, then tap “Add to Home screen” or “Install app.”"
-            : "Open this site on your phone's browser, then use the browser's “Add to Home Screen” option for one-tap access.",
-    },
-  ];
-}
+const steps = [
+  {
+    title: "Welcome to Tapd In",
+    body: "A shared project calendar you can send to clients and subs — no app or account needed on their end. Here's a quick walkthrough.",
+  },
+  {
+    title: "Create a calendar",
+    body: "Each project gets its own calendar. Add phases with a name, target date, and notes — that becomes the schedule your guests see.",
+  },
+  {
+    title: "Invite people",
+    body: "From a calendar, click “Invite people” to generate a link. Choose view-only or comment access — no login required on their end.",
+  },
+  {
+    title: "Updates go out automatically",
+    body: "Whenever you or a guest post an update, anyone who's opted into notifications gets a text or email pointing back to the calendar.",
+  },
+  {
+    title: "Add to your home screen",
+    body: "Get one-tap access from your phone, just like an app.",
+  },
+];
 
 export function OnboardingModal() {
-  const [platform, setPlatform] = useState<Platform>("other");
   const [step, setStep] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const [, startTransition] = useTransition();
 
-  useEffect(() => {
-    setPlatform(detectPlatform());
-  }, []);
-
   if (dismissed) return null;
 
-  const steps = buildSteps(platform);
   const isLast = step === steps.length - 1;
   const current = steps[step];
 
@@ -75,6 +54,11 @@ export function OnboardingModal() {
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">
           {current.body}
         </p>
+        {isLast && (
+          <div className="mt-3">
+            <AddToHomeScreenButton />
+          </div>
+        )}
 
         <div className="mt-6 flex items-center justify-between">
           <button
