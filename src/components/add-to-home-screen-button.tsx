@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Platform = "ios" | "android" | "other";
 
@@ -22,6 +22,7 @@ export function AddToHomeScreenButton({ className }: { className?: string }) {
     useState<BeforeInstallPromptEvent | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
   const [installed, setInstalled] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPlatform(detectPlatform());
@@ -43,6 +44,17 @@ export function AddToHomeScreenButton({ className }: { className?: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!showInstructions) return;
+    function onClickAway(e: MouseEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setShowInstructions(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickAway);
+    return () => document.removeEventListener("mousedown", onClickAway);
+  }, [showInstructions]);
+
   async function handleClick() {
     if (installEvent) {
       await installEvent.prompt();
@@ -63,7 +75,7 @@ export function AddToHomeScreenButton({ className }: { className?: string }) {
   }
 
   return (
-    <div>
+    <div ref={containerRef} className="relative">
       <button
         onClick={handleClick}
         className={
@@ -74,11 +86,14 @@ export function AddToHomeScreenButton({ className }: { className?: string }) {
         Add to Home Screen
       </button>
       {showInstructions && !installEvent && (
-        <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-          {platform === "ios"
-            ? "Tap the Share icon in Safari, scroll down, then tap “Add to Home Screen.”"
-            : "Open your browser's menu, then choose “Add to Home screen” or “Install app.”"}
-        </p>
+        <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl bg-zinc-900 px-4 py-3 text-sm leading-relaxed text-white shadow-lg">
+          <div className="absolute -top-1.5 right-4 h-3 w-3 rotate-45 bg-zinc-900" />
+          <p className="relative">
+            {platform === "ios"
+              ? "Tap the Share icon in Safari, scroll down, then tap “Add to Home Screen.”"
+              : "Open your browser's menu, then choose “Add to Home screen” or “Install app.”"}
+          </p>
+        </div>
       )}
     </div>
   );
