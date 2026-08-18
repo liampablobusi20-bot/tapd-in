@@ -42,12 +42,37 @@ export function EntriesSection({
   );
   const { upload, uploading } = useMediaUpload(getUploadUrl);
 
+  function submitEntry(bodyText: string, uploadedMedia: typeof media) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.set("body_text", bodyText);
+        formData.set("media_url", uploadedMedia?.url ?? "");
+        formData.set("media_type", uploadedMedia?.type ?? "");
+        await createEntry(calendarItemId, calendarId, formData);
+        setMedia(null);
+        formRef.current?.reset();
+      } catch {
+        setError("Couldn't add that entry. Try again.");
+      }
+    });
+  }
+
   async function handleFile(file: File) {
     setError(null);
     try {
       const { mediaUrl, mediaType } = await upload(file);
-      setMedia({ url: mediaUrl, type: mediaType });
-      requestAnimationFrame(() => formRef.current?.requestSubmit());
+      const uploadedMedia = { url: mediaUrl, type: mediaType };
+      setMedia(uploadedMedia);
+      // Submit directly with the value we just got, instead of relying on a
+      // requestAnimationFrame + hidden-input round trip — that repaint isn't
+      // guaranteed to fire promptly (e.g. backgrounded tab on mobile), which
+      // could strand a completed upload without ever posting it.
+      const bodyText =
+        (formRef.current?.elements.namedItem("body_text") as HTMLInputElement | null)
+          ?.value ?? "";
+      submitEntry(bodyText, uploadedMedia);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Couldn't upload that file. Try again."
@@ -56,16 +81,7 @@ export function EntriesSection({
   }
 
   function handleSubmit(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await createEntry(calendarItemId, calendarId, formData);
-        setMedia(null);
-        formRef.current?.reset();
-      } catch {
-        setError("Couldn't add that entry. Try again.");
-      }
-    });
+    submitEntry(String(formData.get("body_text") ?? ""), media);
   }
 
   return (
