@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logout } from "@/lib/actions/auth";
+import { AddToHomeScreenButton } from "@/components/add-to-home-screen-button";
 
 export default function DashboardLayout({
   children,
@@ -12,14 +13,17 @@ export default function DashboardLayout({
         <Link href="/dashboard" className="text-lg font-semibold text-zinc-900">
           Tapd In
         </Link>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
-          >
-            Log out
-          </button>
-        </form>
+        <div className="flex items-center gap-4">
+          <AddToHomeScreenButton className="text-sm font-medium text-zinc-600 hover:text-zinc-900" />
+          <form action={logout}>
+            <button
+              type="submit"
+              className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
       </header>
       <main className="flex-1">{children}</main>
     </div>
