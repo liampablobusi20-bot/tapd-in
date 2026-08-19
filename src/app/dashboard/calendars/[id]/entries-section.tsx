@@ -4,6 +4,7 @@ import { useCallback, useRef, useState, useTransition } from "react";
 import { createEntry } from "@/lib/actions/entries";
 import { createUploadUrl } from "@/lib/actions/uploads";
 import { useMediaUpload } from "@/hooks/use-media-upload";
+import { mediaTypeFor } from "@/lib/media-type";
 import { MediaThumbnail } from "@/components/media-thumbnail";
 import { MediaUploadButton } from "@/components/media-upload-button";
 
@@ -34,13 +35,24 @@ export function EntriesSection({
   } | null>(
     null
   );
+  const [localPreview, setLocalPreview] = useState<{
+    url: string;
+    type: "image" | "video" | "file";
+  } | null>(null);
 
   const getUploadUrl = useCallback(
     (filename: string, contentType: string) =>
       createUploadUrl(calendarId, calendarItemId, filename, contentType),
     [calendarId, calendarItemId]
   );
-  const { upload, uploading } = useMediaUpload(getUploadUrl);
+  const { upload, uploading, progress } = useMediaUpload(getUploadUrl);
+
+  function clearPreview() {
+    setLocalPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  }
 
   function submitEntry(bodyText: string, uploadedMedia: typeof media) {
     setError(null);
@@ -52,6 +64,7 @@ export function EntriesSection({
         formData.set("media_type", uploadedMedia?.type ?? "");
         await createEntry(calendarItemId, calendarId, formData);
         setMedia(null);
+        clearPreview();
         formRef.current?.reset();
       } catch {
         setError("Couldn't add that entry. Try again.");
@@ -61,6 +74,9 @@ export function EntriesSection({
 
   async function handleFile(file: File) {
     setError(null);
+    // Show what was picked immediately — no need to wait on the network to
+    // give people an idea of what they're posting.
+    setLocalPreview({ url: URL.createObjectURL(file), type: mediaTypeFor(file.type) });
     try {
       const { mediaUrl, mediaType } = await upload(file);
       const uploadedMedia = { url: mediaUrl, type: mediaType };
@@ -74,6 +90,7 @@ export function EntriesSection({
           ?.value ?? "";
       submitEntry(bodyText, uploadedMedia);
     } catch (err) {
+      clearPreview();
       setError(
         err instanceof Error ? err.message : "Couldn't upload that file. Try again."
       );
@@ -114,6 +131,43 @@ export function EntriesSection({
         </ul>
       )}
 
+      {localPreview && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2 py-1.5">
+          {localPreview.type === "image" && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={localPreview.url}
+              alt=""
+              className="h-10 w-10 flex-shrink-0 rounded object-cover"
+            />
+          )}
+          {localPreview.type === "video" && (
+            <video
+              src={`${localPreview.url}#t=0.1`}
+              className="h-10 w-10 flex-shrink-0 rounded object-cover"
+              muted
+              playsInline
+              preload="metadata"
+            />
+          )}
+          {localPreview.type === "file" && (
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-zinc-100 text-zinc-400">
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                <path
+                  d="M6 2.5h8l4 4v14a1 1 0 01-1 1H6a1 1 0 01-1-1v-17a1 1 0 011-1z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          )}
+          <span className="text-xs text-zinc-500">
+            {uploading ? `Uploading… ${progress ?? 0}%` : "Adding…"}
+          </span>
+        </div>
+      )}
+
       <form
         ref={formRef}
         action={handleSubmit}
@@ -137,7 +191,7 @@ export function EntriesSection({
           disabled={uploading || pending}
           className="flex-shrink-0 rounded-lg bg-zinc-900 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 disabled:opacity-50"
         >
-          {uploading ? "Uploading…" : pending ? "Adding…" : "Add"}
+          {uploading ? `Uploading… ${progress ?? 0}%` : pending ? "Adding…" : "Add"}
         </button>
       </form>
       {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}

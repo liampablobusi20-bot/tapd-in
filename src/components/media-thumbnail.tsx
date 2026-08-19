@@ -67,7 +67,16 @@ export function MediaThumbnail({
         }
       >
         {type === "video" ? (
-          <video src={src} className="h-full w-full object-cover" preload="metadata" muted />
+          // The #t=0.1 fragment forces the browser to seek to and decode a
+          // frame near the start, instead of leaving the element blank —
+          // preload="metadata" alone doesn't reliably paint anything.
+          <video
+            src={`${src}#t=0.1`}
+            className="h-full w-full object-cover"
+            preload="metadata"
+            muted
+            playsInline
+          />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt="" className="h-full w-full object-cover" />
