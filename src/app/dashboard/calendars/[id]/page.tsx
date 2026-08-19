@@ -54,7 +54,7 @@ export default async function CalendarPage({
     <div className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-6 flex items-start justify-between gap-4">
         <CalendarName calendarId={calendar.id} initialName={calendar.name} />
-        <DeleteCalendarButton calendarId={calendar.id} />
+        <DeleteCalendarButton calendarId={calendar.id} calendarName={calendar.name} />
       </div>
 
       <CalendarGrid
