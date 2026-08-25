@@ -50,7 +50,7 @@ export function GuestMenu() {
             Notification settings
           </a>
           <a
-            href="https://tapd-in-privacy-policy.vercel.app"
+            href="https://tapd-in-privacy-policy-v2.vercel.app"
             target="_blank"
             rel="noreferrer"
             className="block px-4 py-2 text-zinc-700 hover:bg-zinc-50"

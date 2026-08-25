@@ -10,7 +10,7 @@ import {
 const legalLinks = (
   <>
     <a
-      href="https://tapd-in-privacy-policy.vercel.app"
+      href="https://tapd-in-privacy-policy-v2.vercel.app"
       target="_blank"
       rel="noreferrer"
       className="underline"
