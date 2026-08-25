@@ -207,7 +207,6 @@ export function InviteSection({
             <select name="notify_via" defaultValue="" className={selectClass}>
               <option value="">No notifications</option>
               <option value="email">Notify by email</option>
-              <option value="sms">Notify by text</option>
             </select>
             <ChevronIcon />
           </div>

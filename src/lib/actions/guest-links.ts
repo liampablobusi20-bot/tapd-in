@@ -47,14 +47,14 @@ export async function createGuestLink(
   const phone = String(formData.get("phone") ?? "").trim() || null;
   const email = String(formData.get("email") ?? "").trim() || null;
 
+  // SMS opt-in can only happen through the Guest's own self-serve toggle on
+  // their /c/[token] page (see notify-toggle.tsx) — that is the single,
+  // disclosed opt-in method for A2P 10DLC compliance. Owners cannot preset
+  // SMS notifications for a Guest here, even via a raw form submission.
   const notifyViaRaw = String(formData.get("notify_via") ?? "").trim();
-  const notifyVia =
-    notifyViaRaw === "email" || notifyViaRaw === "sms" ? notifyViaRaw : null;
+  const notifyVia = notifyViaRaw === "email" ? notifyViaRaw : null;
   if (notifyVia === "email" && !email) {
     return { error: "Add an email address to notify by email." };
-  }
-  if (notifyVia === "sms" && !phone) {
-    return { error: "Add a phone number to notify by text." };
   }
 
   const token = crypto.randomUUID().replace(/-/g, "");
