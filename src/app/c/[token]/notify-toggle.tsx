@@ -172,11 +172,17 @@ export function NotifyToggle({
           {smsPending ? "Saving…" : "Text me"}
         </button>
       </form>
+      <p className="mt-1.5 text-[11px] leading-snug text-zinc-500">
+        By entering your number and tapping &ldquo;Text me,&rdquo; you agree
+        to receive recurring text messages from <strong>Tapd In</strong>{" "}
+        about updates to this project. Msg frequency varies. Msg &amp; data
+        rates may apply. Reply STOP to unsubscribe, HELP for help.
+      </p>
       {smsState?.error && (
         <p className="mt-1 text-xs text-red-600">{smsState.error}</p>
       )}
 
-      <form action={emailAction} className="mt-2 flex items-center gap-2">
+      <form action={emailAction} className="mt-3 flex items-center gap-2">
         <input
           type="email"
           name="email"
@@ -197,9 +203,7 @@ export function NotifyToggle({
 
       <p className="mt-2 text-[11px] leading-snug text-zinc-500">
         You can only be subscribed to one at a time — choosing text or email
-        replaces any existing notification setting. Msg &amp; data rates may
-        apply for texts. Reply STOP to unsubscribe, HELP for help.{" "}
-        {legalLinks}
+        replaces any existing notification setting. {legalLinks}
       </p>
     </div>
   );
