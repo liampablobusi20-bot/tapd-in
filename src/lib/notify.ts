@@ -29,8 +29,8 @@ async function sendEmail(to: string, subject: string, text: string) {
 async function sendSms(to: string, body: string) {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM_NUMBER;
-  if (!sid || !token || !from) {
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+  if (!sid || !token || !messagingServiceSid) {
     console.warn("Twilio env vars not set — skipping SMS notification");
     return;
   }
@@ -44,7 +44,11 @@ async function sendSms(to: string, body: string) {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({ To: to, From: from, Body: body }),
+        body: new URLSearchParams({
+          To: to,
+          MessagingServiceSid: messagingServiceSid,
+          Body: body,
+        }),
       }
     );
     if (!res.ok) console.error("Twilio SMS failed:", res.status, await res.text());
