@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
   // Allows testing the dev server from another device on the same WiFi
@@ -13,4 +14,9 @@ const nextConfig: NextConfig = {
   // 4.5MB regardless of this setting. Server Actions here only carry text.
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: "tapdin",
+  project: "javascript-nextjs",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+});
