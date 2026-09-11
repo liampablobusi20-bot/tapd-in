@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateItem, deleteItem } from "@/lib/actions/calendar-items";
+import { updateItem, deleteItem, type PhaseStatus } from "@/lib/actions/calendar-items";
 import { RelativeTime } from "@/components/relative-time";
+import { PhaseStatusSelect } from "@/components/phase-status-badge";
 
 type Phase = {
   id: string;
   label: string;
   target_date: string | null;
   notes: string | null;
+  status: PhaseStatus;
   updated_at: string;
 };
 
@@ -48,6 +50,12 @@ export function PhaseRow({
     }
   }
 
+  function saveStatus(status: PhaseStatus) {
+    startTransition(async () => {
+      await updateItem(phase.id, calendarId, { status });
+    });
+  }
+
   return (
     <div className="p-4">
       <div className="flex items-start justify-between gap-3">
@@ -78,6 +86,7 @@ export function PhaseRow({
           onChange={(e) => saveDate(e.target.value)}
           className="rounded-md border border-transparent py-0.5 text-sm text-zinc-600 hover:border-zinc-200 focus:border-zinc-900 focus:outline-none"
         />
+        <PhaseStatusSelect status={phase.status} onChange={saveStatus} />
         <span className="text-xs text-zinc-400">
           Updated <RelativeTime date={phase.updated_at} />
         </span>

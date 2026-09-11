@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { getMonthGrid, toDateKey } from "@/lib/month-grid";
-import { createItem } from "@/lib/actions/calendar-items";
+import { createItem, type PhaseStatus } from "@/lib/actions/calendar-items";
+import { STATUS_COLORS } from "@/components/phase-status-badge";
 import { DayPanel } from "./day-panel";
 import { PhaseRow } from "./phase-row";
 import { EntriesSection } from "./entries-section";
@@ -12,6 +13,7 @@ type Phase = {
   label: string;
   target_date: string | null;
   notes: string | null;
+  status: PhaseStatus;
   updated_at: string;
 };
 
@@ -143,7 +145,7 @@ export function CalendarGrid({
                 {visible.map((item) => (
                   <span
                     key={item.id}
-                    className="truncate rounded bg-zinc-100 px-1 py-0.5 text-[11px] leading-tight text-zinc-700"
+                    className={`truncate rounded px-1 py-0.5 text-[11px] leading-tight ${STATUS_COLORS[item.status]}`}
                   >
                     {item.label}
                   </span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { createItem } from "@/lib/actions/calendar-items";
+import { createItem, type PhaseStatus } from "@/lib/actions/calendar-items";
 import { PhaseRow } from "./phase-row";
 import { EntriesSection } from "./entries-section";
 import { parseDateKey } from "@/lib/month-grid";
@@ -11,6 +11,7 @@ type Phase = {
   label: string;
   target_date: string | null;
   notes: string | null;
+  status: PhaseStatus;
   updated_at: string;
 };
 

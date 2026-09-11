@@ -36,10 +36,17 @@ export async function createItem(calendarId: string, targetDate?: string | null)
   after(() => notifyGuestsOfChange(calendarId, "A new phase was added."));
 }
 
+export type PhaseStatus = "scheduled" | "in_progress" | "done" | "delayed";
+
 export async function updateItem(
   itemId: string,
   calendarId: string,
-  fields: { label?: string; target_date?: string | null; notes?: string }
+  fields: {
+    label?: string;
+    target_date?: string | null;
+    notes?: string;
+    status?: PhaseStatus;
+  }
 ) {
   const { supabase } = await requireUser();
 

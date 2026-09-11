@@ -4,6 +4,7 @@ import { CalendarName } from "./calendar-name";
 import { DeleteCalendarButton } from "./delete-calendar-button";
 import { CalendarGrid } from "./calendar-grid";
 import { InviteSection } from "./invite-section";
+import { ProgressSummary } from "@/components/progress-summary";
 
 export default async function CalendarPage({
   params,
@@ -23,7 +24,7 @@ export default async function CalendarPage({
 
   const { data: items } = await supabase
     .from("calendar_items")
-    .select("id, label, target_date, notes, updated_at")
+    .select("id, label, target_date, notes, status, updated_at")
     .eq("calendar_id", id)
     .order("sort_order", { ascending: true });
 
@@ -56,6 +57,8 @@ export default async function CalendarPage({
         <CalendarName calendarId={calendar.id} initialName={calendar.name} />
         <DeleteCalendarButton calendarId={calendar.id} calendarName={calendar.name} />
       </div>
+
+      <ProgressSummary items={items ?? []} entries={entries ?? []} />
 
       <CalendarGrid
         calendarId={id}

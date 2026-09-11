@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveGuestLink } from "@/lib/guest";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { MediaThumbnail } from "@/components/media-thumbnail";
+import { PhaseStatusBadge } from "@/components/phase-status-badge";
+import { ProgressSummary } from "@/components/progress-summary";
 import { GuestEntryForm } from "./guest-entry-form";
 import { NotifyToggle } from "./notify-toggle";
 import { GuestMenu } from "./guest-menu";
@@ -37,7 +39,7 @@ export default async function GuestCalendarPage({
 
   const { data: items } = await supabase
     .from("calendar_items")
-    .select("id, label, target_date, notes, updated_at")
+    .select("id, label, target_date, notes, status, updated_at")
     .eq("calendar_id", link.calendar_id)
     .order("sort_order", { ascending: true });
 
@@ -86,7 +88,11 @@ export default async function GuestCalendarPage({
         />
       </header>
 
-      <div className="flex flex-col gap-3 px-4 py-4">
+      <div className="px-4 pt-4">
+        <ProgressSummary items={items ?? []} entries={entries ?? []} />
+      </div>
+
+      <div className="flex flex-col gap-3 px-4 pb-4">
         {items?.map((item) => {
           const itemEntries =
             entries?.filter((e) => e.calendar_item_id === item.id) ?? [];
@@ -96,9 +102,12 @@ export default async function GuestCalendarPage({
               className="rounded-lg border border-zinc-200 bg-white p-4"
             >
               <div className="flex items-baseline justify-between gap-2">
-                <h2 className="text-base font-semibold text-zinc-900">
-                  {item.label}
-                </h2>
+                <div className="flex min-w-0 items-center gap-2">
+                  <h2 className="truncate text-base font-semibold text-zinc-900">
+                    {item.label}
+                  </h2>
+                  <PhaseStatusBadge status={item.status} />
+                </div>
                 {item.target_date && (
                   <span className="flex-shrink-0 text-sm text-zinc-500">
                     {new Date(item.target_date + "T00:00:00").toLocaleDateString(
