@@ -1,5 +1,6 @@
 import type { PhaseStatus } from "@/lib/actions/calendar-items";
 import { formatTime } from "@/lib/format-time";
+import { cleanReason } from "@/lib/item-changes";
 import { selectPhasesToShift, type ShiftablePhase } from "@/lib/shift-phases";
 
 export type Proposal =
@@ -24,7 +25,7 @@ export type Proposal =
       // Absent = unchanged; null = make visible to everyone; array = limit.
       group_ids?: string[] | null;
     }
-  | { type: "shift_items"; from_item_id: string; days: number }
+  | { type: "shift_items"; from_item_id: string; days: number; reason?: string }
   | {
       type: "add_note";
       item_id: string;
@@ -151,7 +152,15 @@ export function parseProposal(raw: unknown): Parsed {
     if (typeof days !== "number" || !Number.isInteger(days) || days === 0 || Math.abs(days) > 365) {
       return fail("days must be a non-zero whole number up to 365.");
     }
-    return { proposal: { type: "shift_items", from_item_id: input.from_item_id, days } };
+    const reason = cleanReason(input.reason);
+    return {
+      proposal: {
+        type: "shift_items",
+        from_item_id: input.from_item_id,
+        days,
+        ...(reason ? { reason } : {}),
+      },
+    };
   }
 
   if (input.type === "add_note") {
@@ -307,5 +316,7 @@ export function describeProposal(
   const size = Math.abs(proposal.days);
   return `Move "${anchor?.label ?? "item"}" and everything after it ${size} ${
     size === 1 ? "day" : "days"
-  } ${direction} (${count} ${count === 1 ? "item" : "items"})`;
+  } ${direction} (${count} ${count === 1 ? "item" : "items"})${
+    proposal.reason ? ` — ${proposal.reason}` : ""
+  }`;
 }

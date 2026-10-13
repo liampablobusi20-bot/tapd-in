@@ -10,6 +10,9 @@ import {
   isValidShiftDays,
   selectPhasesToShift,
 } from "@/lib/shift-phases";
+import { cleanReason, dayText, diffItem, type ItemSnapshot } from "@/lib/item-changes";
+import { logChangeEntries } from "@/lib/change-log";
+import { ownerLabel } from "@/lib/owner";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -56,7 +59,13 @@ export async function updateItem(
     visible_group_ids?: string[] | null;
   }
 ) {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
+
+  const { data: before } = await supabase
+    .from("calendar_items")
+    .select("label, target_date, start_time, status, notes")
+    .eq("id", itemId)
+    .maybeSingle();
 
   const update: Record<string, unknown> = {
     ...fields,
@@ -82,13 +91,35 @@ export async function updateItem(
     .from("calendar_items")
     .update(update)
     .eq("id", itemId)
-    .select("visible_group_ids");
+    .select("label, target_date, start_time, status, notes, visible_group_ids");
 
   if (error) throw new Error(error.message);
 
-  const audience = updated?.[0]?.visible_group_ids ?? null;
+  const updatedRow = updated?.[0];
+  const audience = updatedRow?.visible_group_ids ?? null;
+  const changes =
+    before && updatedRow
+      ? diffItem(before as ItemSnapshot, updatedRow as ItemSnapshot)
+      : [];
+
+  const threadLines = changes.filter((change) => change.thread);
+  if (threadLines.length) {
+    await logChangeEntries(
+      supabase,
+      threadLines.map((change) => ({
+        itemId,
+        text: change.thread!,
+        visibleGroupIds: audience,
+      })),
+      await ownerLabel(supabase, user)
+    );
+  }
+
   revalidatePath(`/dashboard/calendars/${calendarId}`);
-  after(() => notifyGuestsOfChange(calendarId, "An item was updated.", undefined, audience));
+  if (changes.length) {
+    const message = changes.map((change) => change.notify).join("; ");
+    after(() => notifyGuestsOfChange(calendarId, message, undefined, audience));
+  }
 }
 
 export async function deleteItem(itemId: string, calendarId: string) {
@@ -96,10 +127,11 @@ export async function deleteItem(itemId: string, calendarId: string) {
 
   const { data: existing } = await supabase
     .from("calendar_items")
-    .select("visible_group_ids")
+    .select("label, visible_group_ids")
     .eq("id", itemId)
     .maybeSingle();
   const audience = existing?.visible_group_ids ?? null;
+  const removed = existing?.label ? `Removed "${existing.label}"` : "An item was removed.";
 
   const { error } = await supabase
     .from("calendar_items")
@@ -109,7 +141,7 @@ export async function deleteItem(itemId: string, calendarId: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath(`/dashboard/calendars/${calendarId}`);
-  after(() => notifyGuestsOfChange(calendarId, "An item was removed.", undefined, audience));
+  after(() => notifyGuestsOfChange(calendarId, removed, undefined, audience));
 }
 
 export type ShiftResult = { movedIds: string[]; days: number };
@@ -120,7 +152,9 @@ async function applyShift(
   supabase: Awaited<ReturnType<typeof createClient>>,
   calendarId: string,
   ids: string[],
-  days: number
+  days: number,
+  authorLabel: string,
+  reason?: string | null
 ): Promise<ShiftResult> {
   if (!ids.length) return { movedIds: [], days };
 
@@ -144,26 +178,49 @@ async function applyShift(
   );
   if (upsertError) throw new Error(upsertError.message);
 
-  revalidatePath(`/dashboard/calendars/${calendarId}`);
-  const count = rows.length;
-  const audience = audienceForItems(rows);
-  after(() =>
-    notifyGuestsOfChange(
-      calendarId,
-      `${count} ${count === 1 ? "item was" : "items were"} rescheduled.`,
-      undefined,
-      audience
-    )
+  const why = cleanReason(reason);
+  const suffix = why ? ` — ${why}` : "";
+  const moved = rows
+    .map((row) => ({
+      id: row.id as string,
+      label: row.label as string,
+      from: row.target_date as string,
+      to: addDays(row.target_date as string, days),
+      visible: row.visible_group_ids as string[] | null,
+    }))
+    .sort((a, b) => a.from.localeCompare(b.from));
+
+  await logChangeEntries(
+    supabase,
+    moved.map((item) => ({
+      itemId: item.id,
+      text: `Moved from ${dayText(item.from)} to ${dayText(item.to)}${suffix}`,
+      visibleGroupIds: item.visible,
+    })),
+    authorLabel
   );
+
+  revalidatePath(`/dashboard/calendars/${calendarId}`);
+  const first = moved[0];
+  const size = Math.abs(days);
+  const message =
+    moved.length === 1
+      ? `"${first.label}" moved from ${dayText(first.from)} to ${dayText(first.to)}${suffix}`
+      : `${moved.length} items moved ${days > 0 ? "later" : "earlier"} by ${size} ${
+          size === 1 ? "day" : "days"
+        }, starting with "${first.label}" (${dayText(first.from)} → ${dayText(first.to)})${suffix}`;
+  const audience = audienceForItems(rows);
+  after(() => notifyGuestsOfChange(calendarId, message, undefined, audience));
   return { movedIds: rows.map((row) => row.id), days };
 }
 
 export async function shiftPhasesFrom(
   itemId: string,
   calendarId: string,
-  days: number
+  days: number,
+  reason?: string | null
 ): Promise<ShiftResult> {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   if (!isValidShiftDays(days)) throw new Error("Invalid number of days.");
 
   const { data: phases, error } = await supabase
@@ -180,18 +237,28 @@ export async function shiftPhasesFrom(
     supabase,
     calendarId,
     selectPhasesToShift(anchor, phases ?? []),
-    days
+    days,
+    await ownerLabel(supabase, user),
+    reason
   );
 }
 
 export async function shiftPhasesByIds(
   calendarId: string,
   ids: string[],
-  days: number
+  days: number,
+  reason?: string | null
 ): Promise<ShiftResult> {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   if (!isValidShiftDays(days) || ids.length > 500) {
     throw new Error("Invalid request.");
   }
-  return applyShift(supabase, calendarId, ids, days);
+  return applyShift(
+    supabase,
+    calendarId,
+    ids,
+    days,
+    await ownerLabel(supabase, user),
+    reason
+  );
 }

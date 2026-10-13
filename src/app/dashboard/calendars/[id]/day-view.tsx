@@ -1,6 +1,6 @@
 "use client";
 
-import { createItem } from "@/lib/actions/calendar-items";
+import { AddItemForm } from "@/components/add-item-form";
 import { PhaseStatusBadge } from "@/components/phase-status-badge";
 import { ItemTime } from "@/components/item-time";
 import { restrictionLabel } from "@/lib/visibility-label";
@@ -25,7 +25,7 @@ export function DayView({
   onOpenItem: (itemId: string) => void;
 }) {
   return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+    <div data-tour="grid" className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       {items.length === 0 ? (
         <p className="px-5 py-8 text-center text-sm text-zinc-500">
           Nothing scheduled for this day.
@@ -34,7 +34,7 @@ export function DayView({
         <ul className="divide-y divide-zinc-100">
           {items.map((item) => {
             const noteCount = entries.filter(
-              (e) => e.calendar_item_id === item.id
+              (e) => e.calendar_item_id === item.id && e.kind === "note"
             ).length;
             return (
               <li key={item.id}>
@@ -81,14 +81,9 @@ export function DayView({
         </ul>
       )}
       <div className="border-t border-zinc-100 p-4">
-        <form action={createItem.bind(null, calendarId, dateKey)}>
-          <button
-            type="submit"
-            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
-          >
-            + Add item for this day
-          </button>
-        </form>
+        <AddItemForm calendarId={calendarId} dateKey={dateKey}>
+          + Add item for this day
+        </AddItemForm>
       </div>
     </div>
   );

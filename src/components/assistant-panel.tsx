@@ -107,6 +107,7 @@ export function AssistantPanel(props: Props) {
     <>
       {!open && (
         <button
+          data-tour="assistant"
           onClick={() => setOpen(true)}
           className="fixed bottom-4 right-4 z-40 rounded-full bg-zinc-900 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-zinc-800"
         >
@@ -125,8 +126,8 @@ export function AssistantPanel(props: Props) {
               <p className="text-sm font-semibold text-zinc-900">Assistant</p>
               <p className="text-xs text-zinc-500">
                 {props.mode === "owner"
-                  ? "Ask questions or request changes. You approve every change."
-                  : "Ask about this schedule."}
+                  ? "You approve every change."
+                  : "Ask about the schedule."}
               </p>
             </div>
             <button

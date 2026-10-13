@@ -8,6 +8,9 @@ import { InviteSection } from "./invite-section";
 import { ProgressSummary } from "@/components/progress-summary";
 import { AssistantPanel } from "@/components/assistant-panel";
 
+// Server actions on this page wait ~20s before sending batched notifications.
+export const maxDuration = 60;
+
 export default async function CalendarPage({
   params,
 }: {
@@ -35,7 +38,7 @@ export default async function CalendarPage({
     ? await supabase
         .from("entries")
         .select(
-          "id, calendar_item_id, author_label, body_text, photo_url, media_type, visible_group_ids, created_at"
+          "id, calendar_item_id, author_label, body_text, photo_url, media_type, visible_group_ids, kind, created_at"
         )
         .in("calendar_item_id", itemIds)
         .order("created_at", { ascending: true })
@@ -61,8 +64,8 @@ export default async function CalendarPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-1 basis-56" data-tour="calendar-header">
           <CalendarName calendarId={calendar.id} initialName={calendar.name} />
           <CalendarTimezone calendarId={calendar.id} timezone={calendar.timezone} />
         </div>

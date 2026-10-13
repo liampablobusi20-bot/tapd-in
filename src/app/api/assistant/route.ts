@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     if (!ids.length) return [];
     let query = db
       .from("entries")
-      .select("calendar_item_id, author_label, body_text, photo_url, created_at")
+      .select("calendar_item_id, author_label, body_text, photo_url, kind, created_at")
       .in("calendar_item_id", ids)
       .order("created_at", { ascending: false })
       .limit(500);

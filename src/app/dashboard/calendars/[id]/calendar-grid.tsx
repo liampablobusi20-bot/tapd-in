@@ -4,15 +4,14 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { getMonthGrid, toDateKey } from "@/lib/month-grid";
 import { compareSchedule } from "@/lib/shift-phases";
 import { formatTime } from "@/lib/format-time";
+import { AddItemForm, ADD_LINK_CLASS } from "@/components/add-item-form";
 import {
-  createItem,
   shiftPhasesByIds,
   type ShiftResult,
 } from "@/lib/actions/calendar-items";
-import { STATUS_COLORS } from "@/components/phase-status-badge";
+import { STATUS_COLORS, PhaseStatusBadge } from "@/components/phase-status-badge";
 import { DayPanel } from "./day-panel";
-import { PhaseRow } from "./phase-row";
-import { EntriesSection, type Group } from "./entries-section";
+import type { Group } from "./entries-section";
 import { WeekView } from "./week-view";
 import { DayView } from "./day-view";
 import { AgendaView } from "./agenda-view";
@@ -75,7 +74,7 @@ export function CalendarGrid({
     const { movedIds, days } = shiftToast;
     startUndo(async () => {
       try {
-        await shiftPhasesByIds(calendarId, movedIds, -days);
+        await shiftPhasesByIds(calendarId, movedIds, -days, "Undo");
         setShiftToast(null);
       } catch {
         setUndoFailed(true);
@@ -157,6 +156,7 @@ export function CalendarGrid({
         <h2 className="text-lg font-semibold text-zinc-900">{title}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <div
+            data-tour="views"
             role="tablist"
             aria-label="Calendar view"
             className="flex overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
@@ -194,7 +194,10 @@ export function CalendarGrid({
       </div>
 
       {view === "month" && (
-        <div className="mt-4 grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 shadow-sm">
+        <div
+          data-tour="grid"
+          className="mt-4 grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 shadow-sm"
+        >
           {WEEKDAY_LABELS.map((label) => (
             <div
               key={label}
@@ -294,14 +297,9 @@ export function CalendarGrid({
         <div className="mt-8">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-zinc-900">Unscheduled</h3>
-            <form action={createItem.bind(null, calendarId, null)}>
-              <button
-                type="submit"
-                className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
-              >
+            <AddItemForm calendarId={calendarId} className={ADD_LINK_CLASS}>
                 + Add item
-              </button>
-            </form>
+              </AddItemForm>
           </div>
 
           {unscheduled.length === 0 ? (
@@ -309,22 +307,22 @@ export function CalendarGrid({
               Nothing unscheduled — every item has a date.
             </p>
           ) : (
-            <div className="mt-3 flex flex-col gap-3">
+            <ul className="mt-3 flex flex-col gap-2">
               {unscheduled.map((item) => (
-                <div
-                  key={item.id}
-                  className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm"
-                >
-                  <PhaseRow phase={item} calendarId={calendarId} groups={groups} />
-                  <EntriesSection
-                    entries={entries.filter((e) => e.calendar_item_id === item.id)}
-                    calendarItemId={item.id}
-                    calendarId={calendarId}
-                    groups={groups}
-                  />
-                </div>
+                <li key={item.id}>
+                  <button
+                    onClick={() => openItem(null, item.id)}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left shadow-sm hover:border-zinc-300"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium text-zinc-900">{item.label}</span>
+                      <PhaseStatusBadge status={item.status} />
+                    </span>
+                    <span className="flex-shrink-0 text-xs text-zinc-400">Set a date</span>
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       )}

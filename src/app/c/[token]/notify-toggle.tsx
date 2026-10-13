@@ -66,6 +66,7 @@ export function NotifyToggle({
       return (
         <div
           id="notify-settings"
+          data-tour="notify"
           className="mt-3 scroll-mt-4 rounded-lg border border-zinc-200 bg-white px-3 py-3"
         >
           <p className="text-xs font-medium text-zinc-500">
@@ -122,6 +123,7 @@ export function NotifyToggle({
     return (
       <div
         id="notify-settings"
+          data-tour="notify"
         className="mt-3 scroll-mt-4 flex items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-600"
       >
         <span>
@@ -151,6 +153,7 @@ export function NotifyToggle({
   return (
     <div
       id="notify-settings"
+          data-tour="notify"
       className="mt-3 scroll-mt-4 rounded-lg border border-zinc-200 bg-white px-3 py-3"
     >
       <p className="text-xs font-medium text-zinc-500">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CreateCalendarForm } from "./create-calendar-form";
-import { OnboardingModal } from "./onboarding-modal";
+import { OwnerSettings } from "./owner-settings";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -17,7 +17,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("plan, onboarded_at")
+    .select("plan, onboarded_at, display_name, notify_email")
     .eq("id", user!.id)
     .single();
 
@@ -26,7 +26,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
-      {!profile?.onboarded_at && <OnboardingModal />}
       <h1 className="text-xl font-semibold text-zinc-900">Your calendars</h1>
       <p className="mt-1 text-sm text-zinc-600">
         One calendar per project. Invite subs and clients once it&apos;s set up.
@@ -68,6 +67,12 @@ export default async function DashboardPage() {
       ) : (
         <CreateCalendarForm />
       )}
+
+      <OwnerSettings
+        email={user!.email ?? ""}
+        displayName={profile?.display_name ?? null}
+        notifyEmail={profile?.notify_email ?? true}
+      />
     </div>
   );
 }

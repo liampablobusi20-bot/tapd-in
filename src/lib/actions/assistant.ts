@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { audienceForItems, notifyGuestsOfChange } from "@/lib/notify";
+import { notifyGuestsOfChange } from "@/lib/notify";
+import { dayText, diffItem, snippet, type ItemSnapshot } from "@/lib/item-changes";
+import { logChangeEntries } from "@/lib/change-log";
+import { ownerLabel } from "@/lib/owner";
 import { MAX_PROPOSALS, parseProposal } from "@/lib/assistant/proposals";
 import { shiftPhasesFrom } from "@/lib/actions/calendar-items";
 
@@ -36,16 +39,29 @@ export async function applyAssistantProposals(
 
   const { data: existing } = await supabase
     .from("calendar_items")
-    .select("id, visible_group_ids")
+    .select("id, label, target_date, start_time, status, notes, visible_group_ids")
     .eq("calendar_id", calendarId);
   const existingIds = new Set((existing ?? []).map((item) => item.id));
-  const currentAudience = new Map(
-    (existing ?? []).map((item) => [item.id, item.visible_group_ids as string[] | null])
+  const known = new Map(
+    (existing ?? []).map((item) => [
+      item.id as string,
+      {
+        snapshot: {
+          label: item.label,
+          target_date: item.target_date,
+          start_time: item.start_time,
+          status: item.status,
+          notes: item.notes,
+        } as ItemSnapshot,
+        audience: item.visible_group_ids as string[] | null,
+      },
+    ])
   );
   let nextSortOrder = existingIds.size;
-  // Who each direct change affects, so one notification reaches only the
-  // guests who can see at least one changed item.
-  const touched: { visible_group_ids: string[] | null }[] = [];
+  const authorLabel = await ownerLabel(supabase, user);
+  // What to tell guests, with who may hear it. Queued together, so a batch of
+  // approved changes goes out as one message.
+  const notices: { message: string; audience: string[] | null }[] = [];
 
   // Every group a proposal names must exist on this calendar.
   async function groupsExist(ids: string[] | null | undefined) {
@@ -57,7 +73,6 @@ export async function applyAssistantProposals(
       .in("id", ids);
     return data?.length === ids.length;
   }
-  let changedDirectly = false;
 
   const results: ApplyResult[] = [];
   for (const entry of raw) {
@@ -85,8 +100,10 @@ export async function applyAssistantProposals(
           sort_order: nextSortOrder++,
         });
         if (error) throw new Error(error.message);
-        changedDirectly = true;
-        touched.push({ visible_group_ids: proposal.group_ids });
+        notices.push({
+          message: `Added "${proposal.label}"${proposal.date ? ` (${dayText(proposal.date)})` : ""}`,
+          audience: proposal.group_ids,
+        });
         results.push({ ok: true, message: `Added "${proposal.label}"` });
       } else if (proposal.type === "update_item") {
         if (!existingIds.has(proposal.id)) {
@@ -110,14 +127,36 @@ export async function applyAssistantProposals(
           .eq("id", proposal.id)
           .eq("calendar_id", calendarId);
         if (error) throw new Error(error.message);
-        changedDirectly = true;
-        touched.push({
-          visible_group_ids:
-            proposal.group_ids !== undefined
-              ? proposal.group_ids
-              : (currentAudience.get(proposal.id) ?? null),
-        });
-        results.push({ ok: true, message: "Updated an item" });
+
+        const current = known.get(proposal.id)!;
+        const nextSnapshot: ItemSnapshot = {
+          label: proposal.label ?? current.snapshot.label,
+          target_date:
+            proposal.date !== undefined ? proposal.date : current.snapshot.target_date,
+          start_time:
+            proposal.time !== undefined ? proposal.time : current.snapshot.start_time,
+          status: proposal.status ?? current.snapshot.status,
+          notes: proposal.notes !== undefined ? proposal.notes : current.snapshot.notes,
+        };
+        const nextAudience =
+          proposal.group_ids !== undefined ? proposal.group_ids : current.audience;
+        const changes = diffItem(current.snapshot, nextSnapshot);
+        await logChangeEntries(
+          supabase,
+          changes
+            .filter((change) => change.thread)
+            .map((change) => ({
+              itemId: proposal.id,
+              text: change.thread!,
+              visibleGroupIds: nextAudience,
+            })),
+          authorLabel
+        );
+        for (const change of changes) {
+          notices.push({ message: change.notify, audience: nextAudience });
+        }
+        known.set(proposal.id, { snapshot: nextSnapshot, audience: nextAudience });
+        results.push({ ok: true, message: `Updated "${nextSnapshot.label}"` });
       } else if (proposal.type === "add_note") {
         if (!existingIds.has(proposal.item_id)) {
           results.push({ ok: false, message: "That item no longer exists." });
@@ -137,15 +176,17 @@ export async function applyAssistantProposals(
         const { error } = await supabase.from("entries").insert({
           calendar_item_id: proposal.item_id,
           author_type: "owner",
-          author_label: user.email,
+          author_label: authorLabel,
           body_text: proposal.text,
           visible_group_ids: proposal.group_ids,
         });
         if (error) throw new Error(error.message);
         const groupIds = proposal.group_ids;
-        after(() =>
-          notifyGuestsOfChange(calendarId, "A new update was posted.", undefined, groupIds)
-        );
+        const itemName = known.get(proposal.item_id)?.snapshot.label ?? "an item";
+        notices.push({
+          message: `${authorLabel} on "${itemName}": "${snippet(proposal.text)}"`,
+          audience: groupIds,
+        });
         results.push({
           ok: true,
           message: groupIds ? "Posted a note to the chosen groups" : "Posted a note to everyone",
@@ -179,7 +220,8 @@ export async function applyAssistantProposals(
         const shifted = await shiftPhasesFrom(
           proposal.from_item_id,
           calendarId,
-          proposal.days
+          proposal.days,
+          proposal.reason
         );
         results.push({
           ok: true,
@@ -197,11 +239,8 @@ export async function applyAssistantProposals(
   }
 
   revalidatePath(`/dashboard/calendars/${calendarId}`);
-  if (changedDirectly) {
-    const audience = audienceForItems(touched);
-    after(() =>
-      notifyGuestsOfChange(calendarId, "The schedule was updated.", undefined, audience)
-    );
+  for (const notice of notices) {
+    after(() => notifyGuestsOfChange(calendarId, notice.message, undefined, notice.audience));
   }
   return results;
 }

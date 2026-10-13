@@ -16,6 +16,7 @@ export function CreateCalendarForm() {
 
   return (
     <form
+      data-tour="create-calendar"
       action={formAction}
       className="mt-6 flex flex-col gap-2 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"
     >

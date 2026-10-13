@@ -27,7 +27,7 @@ export function WeekView({
   );
 
   return (
-    <div className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 shadow-sm md:grid-cols-7">
+    <div data-tour="grid" className="mt-4 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-200 shadow-sm md:grid-cols-7">
       {days.map((date) => {
         const key = toDateKey(date);
         const dayItems = itemsByDate.get(key) ?? [];

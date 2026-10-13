@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useId, useRef, useState, useTransition } from "react";
 import { createEntry } from "@/lib/actions/entries";
 import { createUploadUrl } from "@/lib/actions/uploads";
 import { useMediaUpload } from "@/hooks/use-media-upload";
@@ -8,6 +8,7 @@ import { mediaTypeFor } from "@/lib/media-type";
 import { MediaThumbnail } from "@/components/media-thumbnail";
 import { MediaUploadButton } from "@/components/media-upload-button";
 import { DictationButton, type DictationHandle } from "@/components/dictation-button";
+import { RelativeTime } from "@/components/relative-time";
 
 export type Group = { id: string; name: string };
 
@@ -18,6 +19,7 @@ type Entry = {
   photo_url: string | null;
   media_type: string | null;
   visible_group_ids: string[] | null;
+  kind: "note" | "change";
   created_at: string;
 };
 
@@ -33,7 +35,9 @@ export function EntriesSection({
   groups: Group[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const formId = useId();
   const dictationRef = useRef<DictationHandle>(null);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [media, setMedia] = useState<{
@@ -128,12 +132,39 @@ export function EntriesSection({
   }
 
   const groupNames = new Map(groups.map((g) => [g.id, g.name]));
+  const notes = entries.filter((entry) => entry.kind !== "change");
+  const history = entries.filter((entry) => entry.kind === "change");
+  const selectedNames = groups
+    .filter((group) => selectedGroups.includes(group.id))
+    .map((group) => group.name);
+  const chip =
+    "inline-block cursor-pointer rounded-full border px-2.5 py-0.5 text-xs font-medium";
+  const chipOn = "border-zinc-900 bg-zinc-900 text-white";
+  const chipOff = "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400";
 
   return (
     <div className="border-t border-zinc-100 bg-zinc-50/60 px-4 py-3">
-      {entries.length > 0 && (
+      {history.length > 0 && (
+        <details className="group mb-2.5">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-zinc-400 hover:text-zinc-700 [&::-webkit-details-marker]:hidden">
+            <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden>
+              <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            History ({history.length})
+          </summary>
+          <ul className="mt-1.5 flex flex-col gap-1 border-l border-zinc-200 pl-3 text-xs text-zinc-500">
+            {history.map((entry) => (
+              <li key={entry.id}>
+                {entry.body_text} · <RelativeTime date={entry.created_at} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {notes.length > 0 && (
         <ul className="mb-3 flex flex-col gap-2.5">
-          {entries.map((entry) => (
+          {notes.map((entry) => (
             <li key={entry.id} className="flex items-start gap-2.5 text-sm">
               {entry.photo_url && (
                 <MediaThumbnail
@@ -146,22 +177,20 @@ export function EntriesSection({
                 />
               )}
               <div>
-                {entry.body_text && (
-                  <p className="text-zinc-800">{entry.body_text}</p>
-                )}
+                {entry.body_text && <p className="text-zinc-800">{entry.body_text}</p>}
                 <p className="text-xs text-zinc-500">
-                  {entry.author_label} ·{" "}
-                  {new Date(entry.created_at).toLocaleString("en-US")}
+                  {entry.author_label} · <RelativeTime date={entry.created_at} />
+                  {entry.visible_group_ids && (
+                    <span className="font-medium text-amber-700">
+                      {" "}
+                      · Only{" "}
+                      {entry.visible_group_ids
+                        .map((id) => groupNames.get(id))
+                        .filter(Boolean)
+                        .join(", ") || "a deleted group"}
+                    </span>
+                  )}
                 </p>
-                {entry.visible_group_ids && (
-                  <p className="text-xs font-medium text-amber-700">
-                    Only visible to{" "}
-                    {entry.visible_group_ids
-                      .map((id) => groupNames.get(id))
-                      .filter(Boolean)
-                      .join(", ") || "a deleted group"}
-                  </p>
-                )}
               </div>
             </li>
           ))}
@@ -206,6 +235,7 @@ export function EntriesSection({
       )}
 
       <form
+        id={formId}
         ref={formRef}
         action={handleSubmit}
         className="flex flex-wrap items-center gap-2"
@@ -218,27 +248,6 @@ export function EntriesSection({
         />
         <input type="hidden" name="media_url" value={media?.url ?? ""} />
         <input type="hidden" name="media_type" value={media?.type ?? ""} />
-        {groups.length > 0 && (
-          <fieldset className="flex w-full flex-wrap items-center gap-1.5 text-xs">
-            <legend className="sr-only">Who can see this</legend>
-            <span className="text-zinc-500">
-              Only share with (none selected = everyone):
-            </span>
-            {groups.map((group) => (
-              <label key={group.id} className="cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="visible_group_ids"
-                  value={group.id}
-                  className="peer sr-only"
-                />
-                <span className="inline-block rounded-full border border-zinc-300 bg-white px-2.5 py-0.5 font-medium text-zinc-600 peer-checked:border-zinc-900 peer-checked:bg-zinc-900 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-zinc-900/20">
-                  {group.name}
-                </span>
-              </label>
-            ))}
-          </fieldset>
-        )}
         <DictationButton
           ref={dictationRef}
           className="flex-shrink-0 rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-zinc-600 shadow-sm hover:border-zinc-400"
@@ -269,6 +278,51 @@ export function EntriesSection({
           {uploading ? `Uploading… ${progress ?? 0}%` : pending ? "Adding…" : "Add"}
         </button>
       </form>
+      {groups.length > 0 && (
+        <details className="group mt-1.5">
+          <summary
+            className={`inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium [&::-webkit-details-marker]:hidden ${
+              selectedNames.length ? "text-amber-700" : "text-zinc-400 hover:text-zinc-700"
+            }`}
+          >
+            <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden>
+              <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Visible to: {selectedNames.length ? selectedNames.join(", ") : "everyone"}
+          </summary>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedGroups([])}
+              className={`${chip} ${selectedGroups.length === 0 ? chipOn : chipOff}`}
+            >
+              Everyone
+            </button>
+            {groups.map((group) => (
+              <label key={group.id}>
+                <input
+                  type="checkbox"
+                  name="visible_group_ids"
+                  value={group.id}
+                  form={formId}
+                  checked={selectedGroups.includes(group.id)}
+                  onChange={() =>
+                    setSelectedGroups((current) =>
+                      current.includes(group.id)
+                        ? current.filter((id) => id !== group.id)
+                        : [...current, group.id]
+                    )
+                  }
+                  className="peer sr-only"
+                />
+                <span className={`${chip} peer-checked:border-zinc-900 peer-checked:bg-zinc-900 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-zinc-900/20 ${chipOff}`}>
+                  {group.name}
+                </span>
+              </label>
+            ))}
+          </div>
+        </details>
+      )}
       {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
     </div>
   );

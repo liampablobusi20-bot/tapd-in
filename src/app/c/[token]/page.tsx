@@ -9,8 +9,12 @@ import { NotifyToggle } from "./notify-toggle";
 import { GuestMenu } from "./guest-menu";
 import { AddToCalendar } from "./add-to-calendar";
 import { AssistantPanel } from "@/components/assistant-panel";
+import { ProductTour } from "@/components/tour/product-tour";
 import { compareSchedule } from "@/lib/shift-phases";
 import { ItemTime } from "@/components/item-time";
+
+// Server actions on this page wait ~20s before sending batched notifications.
+export const maxDuration = 60;
 
 export default async function GuestCalendarPage({
   params,
@@ -59,7 +63,7 @@ export default async function GuestCalendarPage({
   const allEntries = supabase
     .from("entries")
     .select(
-      "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, created_at"
+      "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, kind, created_at"
     )
     .in("calendar_item_id", itemIds)
     .order("created_at", { ascending: true });
@@ -149,39 +153,60 @@ export default async function GuestCalendarPage({
                 <p className="mt-1 text-sm text-zinc-600">{item.notes}</p>
               )}
 
-              {itemEntries.length > 0 && (
+              {itemEntries.some((entry) => entry.kind === "change") && (
+                <details className="group mt-3 border-t border-zinc-100 pt-2.5">
+                  <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-zinc-400 hover:text-zinc-700 [&::-webkit-details-marker]:hidden">
+                    <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden>
+                      <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    History ({itemEntries.filter((entry) => entry.kind === "change").length})
+                  </summary>
+                  <ul className="mt-1.5 flex flex-col gap-1 border-l border-zinc-200 pl-3 text-xs text-zinc-500">
+                    {itemEntries
+                      .filter((entry) => entry.kind === "change")
+                      .map((entry) => (
+                        <li key={entry.id}>
+                          {entry.body_text} ·{" "}
+                          {new Date(entry.created_at).toLocaleDateString("en-US")}
+                        </li>
+                      ))}
+                  </ul>
+                </details>
+              )}
+
+              {itemEntries.some((entry) => entry.kind !== "change") && (
                 <ul className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-3">
-                  {itemEntries.map((entry) => (
-                    <li key={entry.id} className="flex items-start gap-2 text-sm">
-                      {entry.photo_url && (
-                        <MediaThumbnail
-                          src={entry.photo_url}
-                          type={
-                            entry.media_type === "video" || entry.media_type === "file"
-                              ? entry.media_type
-                              : "image"
-                          }
-                          className={
-                            entry.media_type === "file"
-                              ? undefined
-                              : "h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-zinc-200"
-                          }
-                        />
-                      )}
-                      <div>
-                        {entry.body_text && (
-                          <p className="text-zinc-800">{entry.body_text}</p>
+                  {itemEntries
+                    .filter((entry) => entry.kind !== "change")
+                    .map((entry) => (
+                      <li key={entry.id} className="flex items-start gap-2 text-sm">
+                        {entry.photo_url && (
+                          <MediaThumbnail
+                            src={entry.photo_url}
+                            type={
+                              entry.media_type === "video" || entry.media_type === "file"
+                                ? entry.media_type
+                                : "image"
+                            }
+                            className={
+                              entry.media_type === "file"
+                                ? undefined
+                                : "h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-zinc-200"
+                            }
+                          />
                         )}
-                        <p className="text-xs text-zinc-500">
-                          {entry.author_label}
-                          {entry.author_type === "owner" ? " (owner)" : ""} ·{" "}
-                          {new Date(entry.created_at).toLocaleDateString(
-                            "en-US"
+                        <div>
+                          {entry.body_text && (
+                            <p className="text-zinc-800">{entry.body_text}</p>
                           )}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
+                          <p className="text-xs text-zinc-500">
+                            {entry.author_label}
+                            {entry.author_type === "owner" ? " (owner)" : ""} ·{" "}
+                            {new Date(entry.created_at).toLocaleDateString("en-US")}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
                 </ul>
               )}
 
@@ -205,6 +230,7 @@ export default async function GuestCalendarPage({
       {Boolean(process.env.ANTHROPIC_API_KEY) && (
         <AssistantPanel mode="guest" token={token} />
       )}
+      <ProductTour variant="guest" autoStart />
     </div>
   );
 }

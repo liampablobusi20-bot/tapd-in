@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { createItem } from "@/lib/actions/calendar-items";
+import { AddItemForm } from "@/components/add-item-form";
 import { PhaseStatusBadge } from "@/components/phase-status-badge";
 import { ItemTime } from "@/components/item-time";
 import { compareSchedule } from "@/lib/shift-phases";
@@ -58,7 +58,9 @@ export function AgendaView({
   }, [scrollTargetKey]);
 
   function row(item: Phase, dateKey: string | null) {
-    const noteCount = entries.filter((e) => e.calendar_item_id === item.id).length;
+    const noteCount = entries.filter(
+      (e) => e.calendar_item_id === item.id && e.kind === "note"
+    ).length;
     return (
       <li key={item.id}>
         <button
@@ -97,7 +99,7 @@ export function AgendaView({
   }
 
   return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+    <div data-tour="grid" className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       <div ref={scrollRef} className="relative max-h-[70vh] overflow-y-auto">
         {groups.length === 0 && unscheduled.length === 0 && (
           <p className="px-5 py-10 text-center text-sm text-zinc-500">
@@ -144,14 +146,7 @@ export function AgendaView({
         )}
       </div>
       <div className="border-t border-zinc-100 p-4">
-        <form action={createItem.bind(null, calendarId, null)}>
-          <button
-            type="submit"
-            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
-          >
-            + Add item
-          </button>
-        </form>
+        <AddItemForm calendarId={calendarId}>+ Add item</AddItemForm>
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ export function AddToCalendar({ token }: { token: string }) {
     "rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:border-zinc-400";
 
   return (
-    <div className="mt-3">
+    <div className="mt-3" data-tour="add-to-calendar">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

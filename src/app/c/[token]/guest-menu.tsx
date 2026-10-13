@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { startTour } from "@/components/tour/tour-store";
 
 export function GuestMenu() {
   const [open, setOpen] = useState(false);
@@ -42,6 +43,16 @@ export function GuestMenu() {
 
       {open && (
         <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-xl border border-zinc-200 bg-white py-1.5 text-sm shadow-lg">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              startTour("guest");
+            }}
+            className="block w-full px-4 py-2 text-left text-zinc-700 hover:bg-zinc-50"
+          >
+            How to use
+          </button>
           <a
             href="#notify-settings"
             onClick={() => setOpen(false)}

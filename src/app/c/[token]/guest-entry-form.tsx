@@ -108,7 +108,12 @@ export function GuestEntryForm({
   }
 
   return (
-    <form ref={formRef} action={handleSubmit} className="mt-3 flex flex-col gap-2">
+    <form
+      data-tour="comment"
+      ref={formRef}
+      action={handleSubmit}
+      className="mt-3 flex flex-col gap-2"
+    >
       <input
         type="text"
         name="author_name"

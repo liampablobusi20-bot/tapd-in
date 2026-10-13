@@ -11,7 +11,9 @@ import {
 import { isValidShiftDays, selectPhasesToShift } from "@/lib/shift-phases";
 import { zoneAbbreviation } from "@/lib/timezone";
 import type { Group } from "./entries-section";
+import { restrictionLabel } from "@/lib/visibility-label";
 import { RelativeTime } from "@/components/relative-time";
+import { Spinner } from "@/components/pending-button";
 import { PhaseStatusSelect } from "@/components/phase-status-badge";
 
 type Phase = {
@@ -49,6 +51,7 @@ export function PhaseRow({
   const [, startTransition] = useTransition();
   const [shiftOpen, setShiftOpen] = useState(false);
   const [shiftDays, setShiftDays] = useState("");
+  const [shiftReason, setShiftReason] = useState("");
   const [shiftError, setShiftError] = useState<string | null>(null);
   const [shifting, startShift] = useTransition();
 
@@ -84,7 +87,12 @@ export function PhaseRow({
     setShiftError(null);
     startShift(async () => {
       try {
-        const result = await shiftPhasesFrom(phase.id, calendarId, parsedShiftDays);
+        const result = await shiftPhasesFrom(
+          phase.id,
+          calendarId,
+          parsedShiftDays,
+          shiftReason
+        );
         onShifted(result);
       } catch {
         setShiftError("Couldn't shift the schedule. Try again.");
@@ -128,28 +136,21 @@ export function PhaseRow({
     });
   }
 
+  const limitedTo = restrictionLabel(phase.visible_group_ids, groups);
+  const chip =
+    "inline-block cursor-pointer rounded-full border px-2.5 py-0.5 text-xs font-medium";
+  const chipOn = "border-zinc-900 bg-zinc-900 text-white";
+  const chipOff = "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400";
+
   return (
     <div className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={saveLabel}
-          placeholder="Item name"
-          className="min-w-0 flex-1 rounded-lg border border-transparent px-1.5 py-1 text-base font-semibold text-zinc-900 hover:border-zinc-200 focus:border-zinc-900 focus:outline-none"
-        />
-        <button
-          onClick={() =>
-            startRemoveTransition(async () => {
-              await deleteItem(phase.id, calendarId);
-            })
-          }
-          disabled={isRemoving}
-          className="flex-shrink-0 rounded-md px-1.5 py-1 text-xs font-medium text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-        >
-          {isRemoving ? "Removing…" : "Remove"}
-        </button>
-      </div>
+      <input
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        onBlur={saveLabel}
+        placeholder="Item name"
+        className="w-full rounded-lg border border-transparent px-1.5 py-1 text-base font-semibold text-zinc-900 hover:border-zinc-200 focus:border-zinc-900 focus:outline-none"
+      />
 
       <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 px-1.5">
         <input
@@ -173,69 +174,10 @@ export function PhaseRow({
           </span>
         )}
         <PhaseStatusSelect status={phase.status} onChange={saveStatus} />
-        <span className="text-xs text-zinc-400">
-          Updated <RelativeTime date={phase.updated_at} />
-        </span>
-        {canShift && !shiftOpen && (
-          <button
-            type="button"
-            onClick={() => setShiftOpen(true)}
-            className="text-xs font-medium text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
-          >
-            Shift schedule…
-          </button>
+        {limitedTo && (
+          <span className="text-xs font-medium text-amber-700">Only {limitedTo}</span>
         )}
       </div>
-
-      {canShift && shiftOpen && (
-        <div className="mx-1.5 mt-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-          <p className="text-xs text-zinc-600">
-            Push this item and everything scheduled after it by:
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input
-              type="number"
-              inputMode="numeric"
-              step={1}
-              min={-365}
-              max={365}
-              value={shiftDays}
-              onChange={(e) => setShiftDays(e.target.value)}
-              placeholder="3"
-              aria-label="Days to shift"
-              className="w-20 rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none"
-            />
-            <span className="text-sm text-zinc-600">days</span>
-            <button
-              type="button"
-              onClick={submitShift}
-              disabled={!shiftValid || shifting}
-              className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 disabled:opacity-50"
-            >
-              {shifting
-                ? "Shifting…"
-                : `Shift ${shiftCount} ${shiftCount === 1 ? "item" : "items"}`}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShiftOpen(false);
-                setShiftDays("");
-                setShiftError(null);
-              }}
-              disabled={shifting}
-              className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-zinc-500 hover:bg-zinc-100 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-          <p className="mt-1.5 text-xs text-zinc-500">
-            Use a negative number to move things earlier. Items without a date
-            don&apos;t move, and you can undo right after.
-          </p>
-          {shiftError && <p className="mt-1 text-xs text-red-600">{shiftError}</p>}
-        </div>
-      )}
 
       <input
         value={notes}
@@ -245,37 +187,135 @@ export function PhaseRow({
         className="mt-1.5 w-full rounded-lg border border-transparent px-1.5 py-1 text-sm text-zinc-600 hover:border-zinc-200 focus:border-zinc-900 focus:outline-none"
       />
 
-      {groups.length > 0 && (
-        <fieldset className="mt-1.5 flex flex-wrap items-center gap-1.5 px-1.5 text-xs">
-          <legend className="sr-only">Who can see this item</legend>
-          <span className="text-zinc-500">Only share this item with (none = everyone):</span>
-          {groups.map((group) => (
-            <label key={group.id} className="cursor-pointer">
+      <details className="group mt-1 px-1.5">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-zinc-400 hover:text-zinc-700 [&::-webkit-details-marker]:hidden">
+          <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden>
+            <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          More
+        </summary>
+
+        <div className="mt-2 flex flex-col gap-3 rounded-xl bg-zinc-50 p-3">
+          {groups.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-zinc-500">Visible to</span>
+              <button
+                type="button"
+                onClick={() => saveVisibility([])}
+                className={`${chip} ${restrictedTo.length === 0 && !hasDeletedGroup ? chipOn : chipOff}`}
+              >
+                Everyone
+              </button>
+              {groups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  aria-pressed={restrictedTo.includes(group.id)}
+                  className={`${chip} ${restrictedTo.includes(group.id) ? chipOn : chipOff}`}
+                >
+                  {group.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {hasDeletedGroup && (
+            <p className="text-xs font-medium text-amber-700">
+              Limited to a deleted group, so only you can see this.{" "}
+              <button
+                type="button"
+                onClick={() => saveVisibility([])}
+                className="underline underline-offset-2 hover:text-amber-900"
+              >
+                Show to everyone
+              </button>
+            </p>
+          )}
+
+          {canShift && !shiftOpen && (
+            <button
+              type="button"
+              onClick={() => setShiftOpen(true)}
+              className="self-start text-sm font-medium text-zinc-700 underline-offset-2 hover:underline"
+            >
+              Shift schedule…
+            </button>
+          )}
+          {canShift && shiftOpen && (
+            <div className="rounded-lg border border-zinc-200 bg-white p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-zinc-600">Move this and everything after it</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  min={-365}
+                  max={365}
+                  value={shiftDays}
+                  onChange={(e) => setShiftDays(e.target.value)}
+                  placeholder="3"
+                  aria-label="Days to shift (negative moves earlier)"
+                  className="w-16 rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none"
+                />
+                <span className="text-sm text-zinc-600">days</span>
+              </div>
               <input
-                type="checkbox"
-                checked={restrictedTo.includes(group.id)}
-                onChange={() => toggleGroup(group.id)}
-                className="peer sr-only"
+                value={shiftReason}
+                onChange={(e) => setShiftReason(e.target.value)}
+                maxLength={200}
+                placeholder="Reason (optional)"
+                aria-label="Reason for the change"
+                className="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none"
               />
-              <span className="inline-block rounded-full border border-zinc-300 bg-white px-2.5 py-0.5 font-medium text-zinc-600 peer-checked:border-zinc-900 peer-checked:bg-zinc-900 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-zinc-900/20">
-                {group.name}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-      )}
-      {hasDeletedGroup && (
-        <p className="mt-1 px-1.5 text-xs font-medium text-amber-700">
-          This item was limited to a group that no longer exists, so only you can see it.{" "}
-          <button
-            type="button"
-            onClick={() => saveVisibility([])}
-            className="underline underline-offset-2 hover:text-amber-900"
-          >
-            Make it visible to everyone
-          </button>
-        </p>
-      )}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={submitShift}
+                  disabled={!shiftValid || shifting}
+                  className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  {shifting && <Spinner />}
+                  {shifting
+                    ? "Shifting…"
+                    : `Shift ${shiftCount} ${shiftCount === 1 ? "item" : "items"}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShiftOpen(false);
+                    setShiftDays("");
+                    setShiftReason("");
+                    setShiftError(null);
+                  }}
+                  disabled={shifting}
+                  className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-zinc-500 hover:bg-zinc-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+              {shiftError && <p className="mt-1 text-xs text-red-600">{shiftError}</p>}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-zinc-400">
+              Updated <RelativeTime date={phase.updated_at} />
+            </span>
+            <button
+              onClick={() =>
+                startRemoveTransition(async () => {
+                  await deleteItem(phase.id, calendarId);
+                })
+              }
+              disabled={isRemoving}
+              className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+            >
+              {isRemoving && <Spinner className="h-3 w-3" />}
+              {isRemoving ? "Removing…" : "Remove item"}
+            </button>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }

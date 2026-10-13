@@ -2,6 +2,7 @@ import { logout } from "@/lib/actions/auth";
 import { AddToHomeScreenButton } from "@/components/add-to-home-screen-button";
 import { DashboardMenu } from "./dashboard-menu";
 import { createClient } from "@/lib/supabase/server";
+import { ProductTour } from "@/components/tour/product-tour";
 
 export default async function DashboardLayout({
   children,
@@ -16,9 +17,19 @@ export default async function DashboardLayout({
   const { data: profile } = user
     ? await supabase
         .from("users")
-        .select("plan, subscription_status")
+        .select("plan, subscription_status, onboarded_at")
         .eq("id", user.id)
         .single()
+    : { data: null };
+
+  const { data: latestCalendar } = user
+    ? await supabase
+        .from("calendars")
+        .select("id")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
     : { data: null };
 
   return (
@@ -41,6 +52,11 @@ export default async function DashboardLayout({
         </div>
       </header>
       <main className="flex-1">{children}</main>
+      <ProductTour
+        variant="owner"
+        autoStart={Boolean(user) && !profile?.onboarded_at}
+        firstCalendarId={latestCalendar?.id ?? null}
+      />
     </div>
   );
 }

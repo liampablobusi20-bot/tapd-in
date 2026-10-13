@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isVisibleToGuest, resolveGuestLink } from "@/lib/guest";
 import { notifyGuestsOfChange } from "@/lib/notify";
+import { snippet } from "@/lib/item-changes";
 
 export async function addGuestEntry(
   token: string,
@@ -20,7 +21,7 @@ export async function addGuestEntry(
 
   const { data: item } = await supabase
     .from("calendar_items")
-    .select("id, visible_group_ids")
+    .select("id, label, visible_group_ids")
     .eq("id", calendarItemId)
     .eq("calendar_id", link.calendar_id)
     .maybeSingle();
@@ -57,12 +58,9 @@ export async function addGuestEntry(
   if (error) throw new Error(error.message);
 
   revalidatePath(`/c/${token}`);
-  after(() =>
-    notifyGuestsOfChange(
-      link.calendar_id,
-      `${authorLabel} posted an update.`,
-      token,
-      visibleGroupIds
-    )
-  );
+  const what = bodyText
+    ? `"${snippet(bodyText)}"`
+    : `shared a ${mediaType === "image" ? "photo" : (mediaType ?? "file")}`;
+  const message = `${authorLabel} on "${item.label}": ${what}`;
+  after(() => notifyGuestsOfChange(link.calendar_id, message, token, visibleGroupIds));
 }

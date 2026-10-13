@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { createGuestLink, revokeGuestLink } from "@/lib/actions/guest-links";
 import { createGroup, deleteGroup, setLinkGroup } from "@/lib/actions/guest-groups";
+import { PendingButton } from "@/components/pending-button";
 
 type GuestLink = {
   id: string;
@@ -64,8 +65,8 @@ function LinkRow({
       : "";
 
   return (
-    <li className="flex items-center justify-between gap-3 px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3">
+    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
+      <div className="flex min-w-0 flex-1 basis-40 items-center gap-3">
         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-500">
           {(link.contact_name || "?").charAt(0).toUpperCase()}
         </div>
@@ -74,17 +75,16 @@ function LinkRow({
             {link.contact_name || "Unnamed guest"}
           </p>
           <p className="text-xs text-zinc-500">
-            {link.permission === "view" ? "View only" : "Can comment"} ·{" "}
+            {link.permission === "view" ? "View only" : "Can comment"}
             {link.notify_via === "email"
-              ? "Notifies by email"
+              ? " · Email updates"
               : link.notify_via === "sms"
-                ? "Notifies by text"
-                : "No notifications"}{" "}
-            · Created {new Date(link.created_at).toLocaleDateString("en-US")}
+                ? " · Text updates"
+                : ""}
           </p>
         </div>
       </div>
-      <div className="flex flex-shrink-0 items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {groups.length > 0 && (
           <select
             aria-label="Group"
@@ -162,63 +162,63 @@ export function InviteSection({
   const canShare = typeof navigator !== "undefined" && "share" in navigator;
 
   return (
-    <div className="mt-10">
+    <div className="mt-10" data-tour="invite">
       <h2 className="text-lg font-semibold text-zinc-900">Invite people</h2>
-      <p className="mt-1 text-sm text-zinc-600">
-        Anyone with the link can view — no account or app needed on their end.
-      </p>
 
-      <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-sm font-medium text-zinc-900">Groups</p>
-        <p className="mt-0.5 text-xs text-zinc-500">
-          Put guests in groups (like Subs or Client), then choose which groups
-          can see each note you post. Notes with no group selected are visible
-          to everyone. Guests in a group only share their own comments with that
-          group.
-        </p>
-        {groups.length > 0 && (
-          <ul className="mt-3 flex flex-wrap gap-1.5">
-            {groups.map((group) => (
-              <li
-                key={group.id}
-                className="flex items-center gap-1 rounded-full bg-zinc-100 py-0.5 pl-2.5 pr-1 text-xs font-medium text-zinc-700"
-              >
-                {group.name}
-                <button
-                  type="button"
-                  aria-label={`Delete group ${group.name}`}
-                  disabled={groupPending}
-                  onClick={() =>
-                    startGroupTransition(
-                      async () => await deleteGroup(group.id, calendarId)
-                    )
-                  }
-                  className="rounded-full px-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+      <details className="group mt-4 rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-zinc-900 [&::-webkit-details-marker]:hidden">
+          <span>
+            Groups
+            <span className="ml-2 font-normal text-zinc-400">
+              {groups.length === 0 ? "None yet" : groups.map((g) => g.name).join(", ")}
+            </span>
+          </span>
+          <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 text-zinc-400 transition-transform group-open:rotate-90" aria-hidden>
+            <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </summary>
+        <div className="border-t border-zinc-100 px-4 pb-4 pt-3">
+          {groups.length > 0 && (
+            <ul className="mb-3 flex flex-wrap gap-1.5">
+              {groups.map((group) => (
+                <li
+                  key={group.id}
+                  className="flex items-center gap-1 rounded-full bg-zinc-100 py-0.5 pl-2.5 pr-1 text-xs font-medium text-zinc-700"
                 >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <form
-          action={createGroup.bind(null, calendarId)}
-          className="mt-3 flex gap-2"
-        >
-          <input
-            name="name"
-            maxLength={40}
-            placeholder="New group name"
-            className={`${inputClass} min-w-0 flex-1 py-1.5`}
-          />
-          <button
-            type="submit"
-            className="flex-shrink-0 rounded-lg border border-zinc-300 bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
-          >
-            Add group
-          </button>
-        </form>
-      </div>
+                  {group.name}
+                  <button
+                    type="button"
+                    aria-label={`Delete group ${group.name}`}
+                    disabled={groupPending}
+                    onClick={() =>
+                      startGroupTransition(
+                        async () => await deleteGroup(group.id, calendarId)
+                      )
+                    }
+                    className="rounded-full px-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form action={createGroup.bind(null, calendarId)} className="flex gap-2">
+            <input
+              name="name"
+              maxLength={40}
+              placeholder="New group (e.g. Subs, Client)"
+              className={`${inputClass} min-w-0 flex-1 py-1.5`}
+            />
+            <PendingButton
+              pendingText="Adding…"
+              className="flex-shrink-0 rounded-lg border border-zinc-300 bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
+            >
+              Add group
+            </PendingButton>
+          </form>
+        </div>
+      </details>
 
       {links.length > 0 && (
         <ul className="mt-4 divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white shadow-sm">

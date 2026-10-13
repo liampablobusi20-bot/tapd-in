@@ -20,5 +20,6 @@ export type Entry = {
   photo_url: string | null;
   media_type: string | null;
   visible_group_ids: string[] | null;
+  kind: "note" | "change";
   created_at: string;
 };

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { startTour } from "@/components/tour/tour-store";
 
 const planLabels: Record<string, string> = {
   free: "Free",
@@ -89,6 +90,16 @@ export function DashboardMenu({
             </div>
           </div>
           <div className="my-1.5 border-t border-zinc-100" />
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              startTour("owner");
+            }}
+            className="block w-full px-4 py-2 text-left text-zinc-700 hover:bg-zinc-50"
+          >
+            How to use
+          </button>
           <a
             href="mailto:liampablobusi20@gmail.com?subject=Tapd%20In%20subscription"
             onClick={() => setOpen(false)}

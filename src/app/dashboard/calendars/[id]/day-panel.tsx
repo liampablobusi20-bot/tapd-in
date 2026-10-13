@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { createItem, type ShiftResult } from "@/lib/actions/calendar-items";
+import type { ShiftResult } from "@/lib/actions/calendar-items";
+import { AddItemForm } from "@/components/add-item-form";
 import { PhaseRow } from "./phase-row";
 import { EntriesSection, type Group } from "./entries-section";
 import { parseDateKey } from "@/lib/month-grid";
@@ -81,14 +82,9 @@ export function DayPanel({
                   : "This item is no longer here."}
               </p>
               {addDateKey && (
-                <form action={createItem.bind(null, calendarId, addDateKey)}>
-                  <button
-                    type="submit"
-                    className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
-                  >
+                <AddItemForm calendarId={calendarId} dateKey={addDateKey}>
                     + Add item for this day
-                  </button>
-                </form>
+                  </AddItemForm>
               )}
             </div>
           )}
@@ -118,14 +114,9 @@ export function DayPanel({
 
           {items.length > 0 && addDateKey && (
             <div className="p-4">
-              <form action={createItem.bind(null, calendarId, addDateKey)}>
-                <button
-                  type="submit"
-                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
-                >
-                  + Add another item for this day
-                </button>
-              </form>
+              <AddItemForm calendarId={calendarId} dateKey={addDateKey}>
+                + Add another item for this day
+              </AddItemForm>
             </div>
           )}
         </div>

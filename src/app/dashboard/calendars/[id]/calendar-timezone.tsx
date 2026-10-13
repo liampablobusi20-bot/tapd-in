@@ -16,7 +16,7 @@ export function CalendarTimezone({
   const known = COMMON_TIME_ZONES.some((zone) => zone.value === value);
 
   return (
-    <label className="mt-1 flex items-center gap-2 px-2 text-sm text-zinc-500">
+    <label className="mt-1 flex flex-wrap items-center gap-2 px-2 text-sm text-zinc-500">
       Time zone
       <select
         value={value}
@@ -28,7 +28,7 @@ export function CalendarTimezone({
             await updateCalendarTimezone(calendarId, next || null);
           });
         }}
-        className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-700 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none disabled:opacity-50"
+        className="max-w-full rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-700 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none disabled:opacity-50"
       >
         <option value="">Not set</option>
         {value && !known && <option value={value}>{value}</option>}

@@ -15,6 +15,7 @@ export type EntryRow = {
   author_label: string | null;
   body_text: string | null;
   photo_url: string | null;
+  kind?: "note" | "change";
   created_at: string;
 };
 
@@ -99,6 +100,11 @@ const ownerTools: Anthropic.Beta.BetaTool[] = [
       properties: {
         from_item_id: { type: "string", description: "The first item to move; it and all later ones shift." },
         days: { type: "integer", description: "Whole days, positive or negative, not zero." },
+        reason: {
+          type: "string",
+          description:
+            "Why it moved, if the user said (e.g. 'inspector delay'). It's saved in the item's conversation and sent in the notification.",
+        },
       },
       required: ["from_item_id", "days"],
     },
@@ -180,6 +186,7 @@ export function makeExecutor({
           notes: rows.map((entry) => ({
             item: byId.get(entry.calendar_item_id)?.label ?? "(removed item)",
             item_date: byId.get(entry.calendar_item_id)?.target_date ?? null,
+            type: entry.kind === "change" ? "schedule change" : "note",
             author: entry.author_label,
             posted: entry.created_at.slice(0, 10),
             text: entry.body_text?.slice(0, 500) ?? null,

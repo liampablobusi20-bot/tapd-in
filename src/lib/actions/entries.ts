@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { notifyGuestsOfChange } from "@/lib/notify";
+import { snippet } from "@/lib/item-changes";
+import { ownerLabel } from "@/lib/owner";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -26,7 +28,7 @@ export async function createEntry(
   // before touching storage or the entries table.
   const { data: item } = await supabase
     .from("calendar_items")
-    .select("id, calendars!inner(owner_id)")
+    .select("id, label, calendars!inner(owner_id)")
     .eq("id", calendarItemId)
     .maybeSingle();
 
@@ -64,10 +66,11 @@ export async function createEntry(
     visibleGroupIds = requestedGroupIds;
   }
 
+  const authorLabel = await ownerLabel(supabase, user);
   const { error } = await supabase.from("entries").insert({
     calendar_item_id: calendarItemId,
     author_type: "owner",
-    author_label: user.email,
+    author_label: authorLabel,
     body_text: bodyText || null,
     photo_url: mediaUrl,
     media_type: mediaType,
@@ -77,12 +80,9 @@ export async function createEntry(
   if (error) throw new Error(error.message);
 
   revalidatePath(`/dashboard/calendars/${calendarId}`);
-  after(() =>
-    notifyGuestsOfChange(
-      calendarId,
-      "A new update was posted.",
-      undefined,
-      visibleGroupIds
-    )
-  );
+  const what = bodyText
+    ? `"${snippet(bodyText)}"`
+    : `shared a ${mediaType === "image" ? "photo" : (mediaType ?? "file")}`;
+  const message = `${authorLabel} on "${item.label}": ${what}`;
+  after(() => notifyGuestsOfChange(calendarId, message, undefined, visibleGroupIds));
 }
