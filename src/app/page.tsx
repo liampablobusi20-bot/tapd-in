@@ -31,13 +31,15 @@ export default async function Home() {
 
       <main className="mx-auto max-w-3xl px-6 py-16">
         <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-          A shared project calendar for contractors, subs, and clients
+          One shared place for your team&apos;s schedule and conversation
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-zinc-600">
-          Tapd In is a project calendar general contractors use to keep
-          clients and subcontractors in the loop. Owners build a schedule of
-          phases and dates, then share a link — Guests can view it, comment,
-          and add photos without ever creating an account.
+          Tapd In is a shared project calendar for teams that need everyone on
+          the same page — project managers, executives, contractors, and
+          clients. Owners build a schedule of items with dates and times, then
+          share a link. Guests can view it, comment, and add files without ever
+          creating an account, and each note can be limited to the groups who
+          should see it.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
@@ -61,7 +63,7 @@ export default async function Home() {
               Build a schedule
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">
-              Add phases with a name, target date, and notes. Owners manage
+              Add items with a name, date, time, and notes. Owners manage
               the calendar from a simple month view or day-by-day list.
             </p>
           </div>
@@ -92,7 +94,7 @@ export default async function Home() {
               Photos and files
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">
-              Attach photos, videos, or documents to any phase to keep a
+              Attach photos, videos, or documents to any item to keep a
               visual record of progress alongside the schedule.
             </p>
           </div>

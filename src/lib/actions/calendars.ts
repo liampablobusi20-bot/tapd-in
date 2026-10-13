@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isValidTimeZone } from "@/lib/timezone";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -50,9 +51,12 @@ export async function createCalendar(
     }
   }
 
+  const timezoneRaw = String(formData.get("timezone") ?? "").trim();
+  const timezone = timezoneRaw && isValidTimeZone(timezoneRaw) ? timezoneRaw : null;
+
   const { data, error } = await supabase
     .from("calendars")
-    .insert({ name, owner_id: user.id })
+    .insert({ name, owner_id: user.id, timezone })
     .select("id")
     .single();
 
@@ -79,6 +83,24 @@ export async function renameCalendar(calendarId: string, name: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/calendars/${calendarId}`);
+}
+
+export async function updateCalendarTimezone(
+  calendarId: string,
+  timezone: string | null
+) {
+  const { supabase } = await requireUser();
+  if (timezone !== null && !isValidTimeZone(timezone)) {
+    throw new Error("Invalid time zone.");
+  }
+
+  const { error } = await supabase
+    .from("calendars")
+    .update({ timezone })
+    .eq("id", calendarId);
+  if (error) throw new Error(error.message);
+
   revalidatePath(`/dashboard/calendars/${calendarId}`);
 }
 

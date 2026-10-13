@@ -11,7 +11,7 @@ const steps = [
   },
   {
     title: "Create a calendar",
-    body: "Each project gets its own calendar. Add phases with a name, target date, and notes — that becomes the schedule your guests see.",
+    body: "Each project gets its own calendar. Add items with a name, date, time, and notes — that becomes the schedule your guests see.",
   },
   {
     title: "Invite people",

@@ -40,11 +40,11 @@ export function ProgressSummary({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-zinc-900">
-            {doneCount} of {items.length} phases done
+            {doneCount} of {items.length} items done
           </p>
           {delayedCount > 0 && (
             <p className="mt-0.5 text-xs font-medium text-red-600">
-              {delayedCount} {delayedCount === 1 ? "phase" : "phases"} delayed
+              {delayedCount} {delayedCount === 1 ? "item" : "items"} delayed
             </p>
           )}
         </div>

@@ -1,41 +1,33 @@
 "use client";
 
 import { useEffect } from "react";
-import { createItem, type PhaseStatus } from "@/lib/actions/calendar-items";
+import { createItem, type ShiftResult } from "@/lib/actions/calendar-items";
 import { PhaseRow } from "./phase-row";
-import { EntriesSection } from "./entries-section";
+import { EntriesSection, type Group } from "./entries-section";
 import { parseDateKey } from "@/lib/month-grid";
-
-type Phase = {
-  id: string;
-  label: string;
-  target_date: string | null;
-  notes: string | null;
-  status: PhaseStatus;
-  updated_at: string;
-};
-
-type Entry = {
-  id: string;
-  calendar_item_id: string;
-  author_label: string | null;
-  body_text: string | null;
-  photo_url: string | null;
-  media_type: string | null;
-  created_at: string;
-};
+import type { Entry, Phase } from "./calendar-types";
 
 export function DayPanel({
   dateKey,
+  focusItemId = null,
   items,
+  allPhases,
   entries,
   calendarId,
+  groups,
+  timezone,
+  onShifted,
   onClose,
 }: {
-  dateKey: string;
+  dateKey: string | null;
+  focusItemId?: string | null;
   items: Phase[];
+  allPhases: Phase[];
   entries: Entry[];
   calendarId: string;
+  groups: Group[];
+  timezone: string | null;
+  onShifted: (result: ShiftResult) => void;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -46,11 +38,17 @@ export function DayPanel({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  const dateLabel = parseDateKey(dateKey).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  // Focused on one item: follow that item's own date, which can change from
+  // inside the panel. Otherwise the whole day (or the unscheduled list).
+  const titleKey = focusItemId ? (items[0]?.target_date ?? null) : dateKey;
+  const dateLabel = titleKey
+    ? parseDateKey(titleKey).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      })
+    : "Unscheduled";
+  const addDateKey = focusItemId ? null : dateKey;
 
   return (
     <div
@@ -78,42 +76,54 @@ export function DayPanel({
           {items.length === 0 && (
             <div className="p-5">
               <p className="mb-3 text-sm text-zinc-500">
-                Nothing scheduled for this day yet.
+                {addDateKey
+                  ? "Nothing scheduled for this day yet."
+                  : "This item is no longer here."}
               </p>
-              <form action={createItem.bind(null, calendarId, dateKey)}>
-                <button
-                  type="submit"
-                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
-                >
-                  + Add phase for this day
-                </button>
-              </form>
+              {addDateKey && (
+                <form action={createItem.bind(null, calendarId, addDateKey)}>
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
+                  >
+                    + Add item for this day
+                  </button>
+                </form>
+              )}
             </div>
           )}
 
           <div className="flex flex-col divide-y divide-zinc-100">
             {items.map((item) => (
               <div key={item.id}>
-                <PhaseRow phase={item} calendarId={calendarId} />
+                <PhaseRow
+                  phase={item}
+                  calendarId={calendarId}
+                  allPhases={allPhases}
+                  onShifted={onShifted}
+                  timezone={timezone}
+                  groups={groups}
+                />
                 <EntriesSection
                   entries={entries.filter(
                     (e) => e.calendar_item_id === item.id
                   )}
                   calendarItemId={item.id}
                   calendarId={calendarId}
+                  groups={groups}
                 />
               </div>
             ))}
           </div>
 
-          {items.length > 0 && (
+          {items.length > 0 && addDateKey && (
             <div className="p-4">
-              <form action={createItem.bind(null, calendarId, dateKey)}>
+              <form action={createItem.bind(null, calendarId, addDateKey)}>
                 <button
                   type="submit"
                   className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
                 >
-                  + Add another phase for this day
+                  + Add another item for this day
                 </button>
               </form>
             </div>

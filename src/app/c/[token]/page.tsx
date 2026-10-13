@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveGuestLink } from "@/lib/guest";
+import { resolveGuestLink, visibleToGuest } from "@/lib/guest";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { MediaThumbnail } from "@/components/media-thumbnail";
 import { PhaseStatusBadge } from "@/components/phase-status-badge";
@@ -7,6 +7,10 @@ import { ProgressSummary } from "@/components/progress-summary";
 import { GuestEntryForm } from "./guest-entry-form";
 import { NotifyToggle } from "./notify-toggle";
 import { GuestMenu } from "./guest-menu";
+import { AddToCalendar } from "./add-to-calendar";
+import { AssistantPanel } from "@/components/assistant-panel";
+import { compareSchedule } from "@/lib/shift-phases";
+import { ItemTime } from "@/components/item-time";
 
 export default async function GuestCalendarPage({
   params,
@@ -33,25 +37,38 @@ export default async function GuestCalendarPage({
 
   const { data: calendar } = await supabase
     .from("calendars")
-    .select("id, name, created_at")
+    .select("id, name, timezone, created_at")
     .eq("id", link.calendar_id)
     .single();
 
-  const { data: items } = await supabase
-    .from("calendar_items")
-    .select("id, label, target_date, notes, status, updated_at")
-    .eq("calendar_id", link.calendar_id)
-    .order("sort_order", { ascending: true });
+  const { data: rawItems } = await visibleToGuest(
+    supabase
+      .from("calendar_items")
+      .select("id, label, target_date, start_time, notes, status, sort_order, updated_at")
+      .eq("calendar_id", link.calendar_id),
+    link.group_id
+  );
+  const items = rawItems ? [...rawItems].sort(compareSchedule) : rawItems;
 
   const itemIds = items?.map((item) => item.id) ?? [];
+  // Restricted entries are filtered out in the query itself so they never
+  // reach this render: an ungrouped guest only gets unrestricted entries, a
+  // grouped guest also gets entries shared with their group.
+  // Notes on an item the guest can't see are excluded too: entries are looked
+  // up by the ids of the visible items only.
+  const allEntries = supabase
+    .from("entries")
+    .select(
+      "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, created_at"
+    )
+    .in("calendar_item_id", itemIds)
+    .order("created_at", { ascending: true });
   const { data: entries } = itemIds.length
-    ? await supabase
-        .from("entries")
-        .select(
-          "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, created_at"
-        )
-        .in("calendar_item_id", itemIds)
-        .order("created_at", { ascending: true })
+    ? await (link.group_id
+        ? allEntries.or(
+            `visible_group_ids.is.null,visible_group_ids.cs.{${link.group_id}}`
+          )
+        : allEntries.is("visible_group_ids", null))
     : { data: [] };
 
   const timestamps = [
@@ -86,6 +103,7 @@ export default async function GuestCalendarPage({
           phone={link.phone}
           email={link.email}
         />
+        <AddToCalendar token={token} />
       </header>
 
       <div className="px-4 pt-4">
@@ -113,6 +131,16 @@ export default async function GuestCalendarPage({
                     {new Date(item.target_date + "T00:00:00").toLocaleDateString(
                       "en-US",
                       { month: "short", day: "numeric" }
+                    )}
+                    {item.start_time && item.target_date && (
+                      <>
+                        {" · "}
+                        <ItemTime
+                          dateKey={item.target_date}
+                          time={item.start_time}
+                          timezone={calendar?.timezone ?? null}
+                        />
+                      </>
                     )}
                   </span>
                 )}
@@ -170,10 +198,13 @@ export default async function GuestCalendarPage({
 
         {items?.length === 0 && (
           <p className="px-2 py-8 text-center text-sm text-zinc-500">
-            No phases have been added to this calendar yet.
+            Nothing has been added to this calendar yet.
           </p>
         )}
       </div>
+      {Boolean(process.env.ANTHROPIC_API_KEY) && (
+        <AssistantPanel mode="guest" token={token} />
+      )}
     </div>
   );
 }

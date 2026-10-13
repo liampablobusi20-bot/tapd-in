@@ -6,6 +6,7 @@ import { createGuestUploadUrl } from "@/lib/actions/uploads";
 import { useMediaUpload } from "@/hooks/use-media-upload";
 import { mediaTypeFor } from "@/lib/media-type";
 import { MediaUploadButton } from "@/components/media-upload-button";
+import { DictationButton, type DictationHandle } from "@/components/dictation-button";
 
 export function GuestEntryForm({
   token,
@@ -17,6 +18,7 @@ export function GuestEntryForm({
   defaultName: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const dictationRef = useRef<DictationHandle>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [media, setMedia] = useState<{
@@ -49,6 +51,7 @@ export function GuestEntryForm({
     bodyText: string,
     uploadedMedia: typeof media
   ) {
+    dictationRef.current?.cancel();
     setError(null);
     startTransition(async () => {
       try {
@@ -159,6 +162,23 @@ export function GuestEntryForm({
         />
         <input type="hidden" name="media_url" value={media?.url ?? ""} />
         <input type="hidden" name="media_type" value={media?.type ?? ""} />
+        <DictationButton
+          ref={dictationRef}
+          className="flex-shrink-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-600"
+          getValue={() =>
+            (formRef.current?.elements.namedItem("body_text") as HTMLInputElement | null)
+              ?.value ?? ""
+          }
+          setValue={(value) => {
+            const note = formRef.current?.elements.namedItem(
+              "body_text"
+            ) as HTMLInputElement | null;
+            if (note) note.value = value;
+          }}
+          onError={setError}
+          onStart={() => setError(null)}
+          disabled={uploading || pending}
+        />
         <MediaUploadButton
           className="flex-shrink-0 cursor-pointer rounded-md border border-zinc-300 bg-white px-3 py-2"
           onFile={handleFile}

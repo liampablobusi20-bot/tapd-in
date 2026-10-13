@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveGuestLink } from "@/lib/guest";
+import { isVisibleToGuest, resolveGuestLink } from "@/lib/guest";
 import { notifyGuestsOfChange } from "@/lib/notify";
 
 export async function addGuestEntry(
@@ -20,11 +20,13 @@ export async function addGuestEntry(
 
   const { data: item } = await supabase
     .from("calendar_items")
-    .select("id")
+    .select("id, visible_group_ids")
     .eq("id", calendarItemId)
     .eq("calendar_id", link.calendar_id)
     .maybeSingle();
-  if (!item) throw new Error("Not found.");
+  if (!item || !isVisibleToGuest(item.visible_group_ids, link.group_id)) {
+    throw new Error("Not found.");
+  }
 
   const bodyText = String(formData.get("body_text") ?? "").trim();
   const authorLabel =
@@ -38,6 +40,11 @@ export async function addGuestEntry(
 
   if (!bodyText && !mediaUrl) return;
 
+  // A grouped guest's posts stay within their own group (plus the Owner), so
+  // e.g. a sub's pricing comment can't leak to the client. Ungrouped guests
+  // post to everyone, as before.
+  const visibleGroupIds = link.group_id ? [link.group_id] : null;
+
   const { error } = await supabase.from("entries").insert({
     calendar_item_id: calendarItemId,
     author_type: "guest",
@@ -45,11 +52,17 @@ export async function addGuestEntry(
     body_text: bodyText || null,
     photo_url: mediaUrl,
     media_type: mediaType,
+    visible_group_ids: visibleGroupIds,
   });
   if (error) throw new Error(error.message);
 
   revalidatePath(`/c/${token}`);
   after(() =>
-    notifyGuestsOfChange(link.calendar_id, `${authorLabel} posted an update.`, token)
+    notifyGuestsOfChange(
+      link.calendar_id,
+      `${authorLabel} posted an update.`,
+      token,
+      visibleGroupIds
+    )
   );
 }

@@ -7,6 +7,9 @@ import { useMediaUpload } from "@/hooks/use-media-upload";
 import { mediaTypeFor } from "@/lib/media-type";
 import { MediaThumbnail } from "@/components/media-thumbnail";
 import { MediaUploadButton } from "@/components/media-upload-button";
+import { DictationButton, type DictationHandle } from "@/components/dictation-button";
+
+export type Group = { id: string; name: string };
 
 type Entry = {
   id: string;
@@ -14,6 +17,7 @@ type Entry = {
   body_text: string | null;
   photo_url: string | null;
   media_type: string | null;
+  visible_group_ids: string[] | null;
   created_at: string;
 };
 
@@ -21,12 +25,15 @@ export function EntriesSection({
   entries,
   calendarItemId,
   calendarId,
+  groups,
 }: {
   entries: Entry[];
   calendarItemId: string;
   calendarId: string;
+  groups: Group[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const dictationRef = useRef<DictationHandle>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [media, setMedia] = useState<{
@@ -54,7 +61,12 @@ export function EntriesSection({
     });
   }
 
-  function submitEntry(bodyText: string, uploadedMedia: typeof media) {
+  function submitEntry(
+    bodyText: string,
+    uploadedMedia: typeof media,
+    groupIds: string[]
+  ) {
+    dictationRef.current?.cancel();
     setError(null);
     startTransition(async () => {
       try {
@@ -62,10 +74,17 @@ export function EntriesSection({
         formData.set("body_text", bodyText);
         formData.set("media_url", uploadedMedia?.url ?? "");
         formData.set("media_type", uploadedMedia?.type ?? "");
+        for (const id of groupIds) formData.append("visible_group_ids", id);
         await createEntry(calendarItemId, calendarId, formData);
         setMedia(null);
         clearPreview();
-        formRef.current?.reset();
+        // Clear only the note, not the whole form: the group checkboxes stay
+        // as they were, so a run of private notes doesn't silently flip back
+        // to "everyone" after the first one.
+        const note = formRef.current?.elements.namedItem(
+          "body_text"
+        ) as HTMLInputElement | null;
+        if (note) note.value = "";
       } catch {
         setError("Couldn't add that entry. Try again.");
       }
@@ -88,7 +107,10 @@ export function EntriesSection({
       const bodyText =
         (formRef.current?.elements.namedItem("body_text") as HTMLInputElement | null)
           ?.value ?? "";
-      submitEntry(bodyText, uploadedMedia);
+      const groupIds = formRef.current
+        ? new FormData(formRef.current).getAll("visible_group_ids").map(String)
+        : [];
+      submitEntry(bodyText, uploadedMedia, groupIds);
     } catch (err) {
       clearPreview();
       setError(
@@ -98,8 +120,14 @@ export function EntriesSection({
   }
 
   function handleSubmit(formData: FormData) {
-    submitEntry(String(formData.get("body_text") ?? ""), media);
+    submitEntry(
+      String(formData.get("body_text") ?? ""),
+      media,
+      formData.getAll("visible_group_ids").map(String)
+    );
   }
+
+  const groupNames = new Map(groups.map((g) => [g.id, g.name]));
 
   return (
     <div className="border-t border-zinc-100 bg-zinc-50/60 px-4 py-3">
@@ -125,6 +153,15 @@ export function EntriesSection({
                   {entry.author_label} ·{" "}
                   {new Date(entry.created_at).toLocaleString("en-US")}
                 </p>
+                {entry.visible_group_ids && (
+                  <p className="text-xs font-medium text-amber-700">
+                    Only visible to{" "}
+                    {entry.visible_group_ids
+                      .map((id) => groupNames.get(id))
+                      .filter(Boolean)
+                      .join(", ") || "a deleted group"}
+                  </p>
+                )}
               </div>
             </li>
           ))}
@@ -181,6 +218,44 @@ export function EntriesSection({
         />
         <input type="hidden" name="media_url" value={media?.url ?? ""} />
         <input type="hidden" name="media_type" value={media?.type ?? ""} />
+        {groups.length > 0 && (
+          <fieldset className="flex w-full flex-wrap items-center gap-1.5 text-xs">
+            <legend className="sr-only">Who can see this</legend>
+            <span className="text-zinc-500">
+              Only share with (none selected = everyone):
+            </span>
+            {groups.map((group) => (
+              <label key={group.id} className="cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="visible_group_ids"
+                  value={group.id}
+                  className="peer sr-only"
+                />
+                <span className="inline-block rounded-full border border-zinc-300 bg-white px-2.5 py-0.5 font-medium text-zinc-600 peer-checked:border-zinc-900 peer-checked:bg-zinc-900 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-zinc-900/20">
+                  {group.name}
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        <DictationButton
+          ref={dictationRef}
+          className="flex-shrink-0 rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-zinc-600 shadow-sm hover:border-zinc-400"
+          getValue={() =>
+            (formRef.current?.elements.namedItem("body_text") as HTMLInputElement | null)
+              ?.value ?? ""
+          }
+          setValue={(value) => {
+            const note = formRef.current?.elements.namedItem(
+              "body_text"
+            ) as HTMLInputElement | null;
+            if (note) note.value = value;
+          }}
+          onError={setError}
+          onStart={() => setError(null)}
+          disabled={uploading || pending}
+        />
         <MediaUploadButton
           className="flex-shrink-0 cursor-pointer rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-zinc-600 shadow-sm hover:border-zinc-400"
           onFile={handleFile}

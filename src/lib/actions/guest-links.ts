@@ -57,6 +57,17 @@ export async function createGuestLink(
     return { error: "Add an email address to notify by email." };
   }
 
+  const groupId = String(formData.get("group_id") ?? "").trim() || null;
+  if (groupId) {
+    const { data: group } = await supabase
+      .from("guest_groups")
+      .select("id")
+      .eq("id", groupId)
+      .eq("calendar_id", calendarId)
+      .maybeSingle();
+    if (!group) return { error: "Group not found." };
+  }
+
   const token = crypto.randomUUID().replace(/-/g, "");
 
   const { error } = await supabase.from("guest_links").insert({
@@ -67,6 +78,7 @@ export async function createGuestLink(
     phone,
     email,
     notify_via: notifyVia,
+    group_id: groupId,
   });
 
   if (error) return { error: error.message };

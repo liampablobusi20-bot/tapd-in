@@ -57,12 +57,22 @@ async function sendSms(to: string, body: string) {
   }
 }
 
+// Who should hear about a change that touches these items: everyone if any of
+// them is unrestricted, otherwise only the groups that can see at least one.
+export function audienceForItems(
+  items: { visible_group_ids: string[] | null }[]
+): string[] | null {
+  if (items.some((item) => item.visible_group_ids === null)) return null;
+  return [...new Set(items.flatMap((item) => item.visible_group_ids ?? []))];
+}
+
 // Best-effort side channel: a failure here must never break the save that
 // triggered it, so every error is caught and logged, never thrown.
 export async function notifyGuestsOfChange(
   calendarId: string,
   message: string,
-  excludeToken?: string
+  excludeToken?: string,
+  visibleGroupIds?: string[] | null
 ) {
   try {
     const admin = createAdminClient();
@@ -75,7 +85,7 @@ export async function notifyGuestsOfChange(
 
     const { data: links } = await admin
       .from("guest_links")
-      .select("token, email, phone, notify_via")
+      .select("token, email, phone, notify_via, group_id")
       .eq("calendar_id", calendarId)
       .is("revoked_at", null)
       .not("notify_via", "is", null);
@@ -88,6 +98,12 @@ export async function notifyGuestsOfChange(
     await Promise.all(
       links
         .filter((link) => link.token !== excludeToken)
+        // A restricted entry only pings guests who can actually see it.
+        .filter(
+          (link) =>
+            !visibleGroupIds ||
+            (link.group_id !== null && visibleGroupIds.includes(link.group_id))
+        )
         .map((link) => {
           const url = `${origin}/c/${link.token}`;
           if (link.notify_via === "email" && link.email) {

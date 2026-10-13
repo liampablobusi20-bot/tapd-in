@@ -46,6 +46,24 @@ export async function createEntry(
 
   if (!bodyText && !mediaUrl) return;
 
+  // No group ids = visible to everyone. Otherwise every id must be a group on
+  // this calendar, so a tampered form can't point at someone else's group.
+  const requestedGroupIds = [
+    ...new Set(formData.getAll("visible_group_ids").map(String).filter(Boolean)),
+  ];
+  let visibleGroupIds: string[] | null = null;
+  if (requestedGroupIds.length) {
+    const { data: groups } = await supabase
+      .from("guest_groups")
+      .select("id")
+      .eq("calendar_id", calendarId)
+      .in("id", requestedGroupIds);
+    if (groups?.length !== requestedGroupIds.length) {
+      throw new Error("Not found.");
+    }
+    visibleGroupIds = requestedGroupIds;
+  }
+
   const { error } = await supabase.from("entries").insert({
     calendar_item_id: calendarItemId,
     author_type: "owner",
@@ -53,10 +71,18 @@ export async function createEntry(
     body_text: bodyText || null,
     photo_url: mediaUrl,
     media_type: mediaType,
+    visible_group_ids: visibleGroupIds,
   });
 
   if (error) throw new Error(error.message);
 
   revalidatePath(`/dashboard/calendars/${calendarId}`);
-  after(() => notifyGuestsOfChange(calendarId, "A new update was posted."));
+  after(() =>
+    notifyGuestsOfChange(
+      calendarId,
+      "A new update was posted.",
+      undefined,
+      visibleGroupIds
+    )
+  );
 }

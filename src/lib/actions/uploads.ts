@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveGuestLink } from "@/lib/guest";
+import { isVisibleToGuest, resolveGuestLink } from "@/lib/guest";
 import { mediaTypeFor } from "@/lib/media-type";
 
 // Mints a Supabase Storage signed upload URL instead of accepting the file
@@ -59,11 +59,13 @@ export async function createGuestUploadUrl(
   const admin = createAdminClient();
   const { data: item } = await admin
     .from("calendar_items")
-    .select("id")
+    .select("id, visible_group_ids")
     .eq("id", calendarItemId)
     .eq("calendar_id", link.calendar_id)
     .maybeSingle();
-  if (!item) throw new Error("Not found.");
+  if (!item || !isVisibleToGuest(item.visible_group_ids, link.group_id)) {
+    throw new Error("Not found.");
+  }
 
   const path = `${link.calendar_id}/${calendarItemId}/${crypto.randomUUID()}-${filename}`;
   const { data, error } = await admin.storage

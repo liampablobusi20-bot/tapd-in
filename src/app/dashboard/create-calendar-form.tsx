@@ -1,9 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useSyncExternalStore } from "react";
 import { createCalendar } from "@/lib/actions/calendars";
 
+const subscribe = () => () => {};
+const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+const serverZone = () => "";
+
 export function CreateCalendarForm() {
+  const timezone = useSyncExternalStore(subscribe, browserZone, serverZone);
   const [state, formAction, pending] = useActionState(
     createCalendar,
     undefined
@@ -15,6 +20,7 @@ export function CreateCalendarForm() {
       className="mt-6 flex flex-col gap-2 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"
     >
       <div className="flex gap-2">
+        <input type="hidden" name="timezone" value={timezone} />
         <input
           name="name"
           required

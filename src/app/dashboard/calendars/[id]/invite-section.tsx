@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { createGuestLink, revokeGuestLink } from "@/lib/actions/guest-links";
+import { createGroup, deleteGroup, setLinkGroup } from "@/lib/actions/guest-groups";
 
 type GuestLink = {
   id: string;
@@ -9,8 +10,11 @@ type GuestLink = {
   permission: "view" | "comment";
   contact_name: string | null;
   notify_via: "email" | "sms" | null;
+  group_id: string | null;
   created_at: string;
 };
+
+type Group = { id: string; name: string };
 
 type Contact = {
   id: string;
@@ -46,9 +50,11 @@ const inputClass =
 function LinkRow({
   link,
   calendarId,
+  groups,
 }: {
   link: GuestLink;
   calendarId: string;
+  groups: Group[];
 }) {
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
@@ -79,6 +85,27 @@ function LinkRow({
         </div>
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
+        {groups.length > 0 && (
+          <select
+            aria-label="Group"
+            value={link.group_id ?? ""}
+            disabled={pending}
+            onChange={(e) =>
+              startTransition(
+                async () =>
+                  await setLinkGroup(link.id, calendarId, e.target.value || null)
+              )
+            }
+            className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 hover:border-zinc-300 disabled:opacity-50"
+          >
+            <option value="">No group</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           onClick={() => {
             navigator.clipboard.writeText(url);
@@ -106,10 +133,12 @@ function LinkRow({
 export function InviteSection({
   calendarId,
   links,
+  groups,
   contacts,
 }: {
   calendarId: string;
   links: GuestLink[];
+  groups: Group[];
   contacts: Contact[];
 }) {
   const [state, formAction, pending] = useActionState(
@@ -120,6 +149,7 @@ export function InviteSection({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
+  const [groupPending, startGroupTransition] = useTransition();
 
   function applyContact(id: string) {
     const contact = contacts.find((c) => c.id === id);
@@ -138,10 +168,67 @@ export function InviteSection({
         Anyone with the link can view — no account or app needed on their end.
       </p>
 
+      <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <p className="text-sm font-medium text-zinc-900">Groups</p>
+        <p className="mt-0.5 text-xs text-zinc-500">
+          Put guests in groups (like Subs or Client), then choose which groups
+          can see each note you post. Notes with no group selected are visible
+          to everyone. Guests in a group only share their own comments with that
+          group.
+        </p>
+        {groups.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-1.5">
+            {groups.map((group) => (
+              <li
+                key={group.id}
+                className="flex items-center gap-1 rounded-full bg-zinc-100 py-0.5 pl-2.5 pr-1 text-xs font-medium text-zinc-700"
+              >
+                {group.name}
+                <button
+                  type="button"
+                  aria-label={`Delete group ${group.name}`}
+                  disabled={groupPending}
+                  onClick={() =>
+                    startGroupTransition(
+                      async () => await deleteGroup(group.id, calendarId)
+                    )
+                  }
+                  className="rounded-full px-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form
+          action={createGroup.bind(null, calendarId)}
+          className="mt-3 flex gap-2"
+        >
+          <input
+            name="name"
+            maxLength={40}
+            placeholder="New group name"
+            className={`${inputClass} min-w-0 flex-1 py-1.5`}
+          />
+          <button
+            type="submit"
+            className="flex-shrink-0 rounded-lg border border-zinc-300 bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
+          >
+            Add group
+          </button>
+        </form>
+      </div>
+
       {links.length > 0 && (
         <ul className="mt-4 divide-y divide-zinc-100 rounded-2xl border border-zinc-200 bg-white shadow-sm">
           {links.map((link) => (
-            <LinkRow key={link.id} link={link} calendarId={calendarId} />
+            <LinkRow
+              key={link.id}
+              link={link}
+              calendarId={calendarId}
+              groups={groups}
+            />
           ))}
         </ul>
       )}
@@ -210,6 +297,19 @@ export function InviteSection({
             </select>
             <ChevronIcon />
           </div>
+          {groups.length > 0 && (
+            <div className="relative w-40 flex-shrink-0">
+              <select name="group_id" defaultValue="" className={selectClass}>
+                <option value="">No group</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronIcon />
+            </div>
+          )}
           <button
             type="submit"
             disabled={pending}
