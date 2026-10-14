@@ -7,6 +7,7 @@ import { CalendarGrid } from "./calendar-grid";
 import { InviteSection } from "./invite-section";
 import { ProgressSummary } from "@/components/progress-summary";
 import { AssistantPanel } from "@/components/assistant-panel";
+import { signEntryMedia } from "@/lib/media-urls";
 
 // Server actions on this page wait ~20s before sending batched notifications.
 export const maxDuration = 60;
@@ -34,15 +35,17 @@ export default async function CalendarPage({
     .order("sort_order", { ascending: true });
 
   const itemIds = items?.map((item) => item.id) ?? [];
-  const { data: entries } = itemIds.length
+  const { data: rawEntries } = itemIds.length
     ? await supabase
         .from("entries")
         .select(
-          "id, calendar_item_id, author_label, body_text, photo_url, media_type, visible_group_ids, kind, created_at"
+          "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, visible_group_ids, kind, created_at"
         )
         .in("calendar_item_id", itemIds)
         .order("created_at", { ascending: true })
     : { data: [] };
+
+  const entries = await signEntryMedia(rawEntries ?? []);
 
   const { data: guestLinks } = await supabase
     .from("guest_links")

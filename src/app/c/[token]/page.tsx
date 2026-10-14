@@ -10,6 +10,7 @@ import { GuestMenu } from "./guest-menu";
 import { AddToCalendar } from "./add-to-calendar";
 import { AssistantPanel } from "@/components/assistant-panel";
 import { ProductTour } from "@/components/tour/product-tour";
+import { signEntryMedia } from "@/lib/media-urls";
 import { compareSchedule } from "@/lib/shift-phases";
 import { ItemTime } from "@/components/item-time";
 
@@ -67,13 +68,14 @@ export default async function GuestCalendarPage({
     )
     .in("calendar_item_id", itemIds)
     .order("created_at", { ascending: true });
-  const { data: entries } = itemIds.length
+  const { data: rawEntries } = itemIds.length
     ? await (link.group_id
         ? allEntries.or(
             `visible_group_ids.is.null,visible_group_ids.cs.{${link.group_id}}`
           )
         : allEntries.is("visible_group_ids", null))
     : { data: [] };
+  const entries = await signEntryMedia(rawEntries ?? []);
 
   const timestamps = [
     calendar?.created_at,

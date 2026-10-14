@@ -9,11 +9,13 @@ import { MediaThumbnail } from "@/components/media-thumbnail";
 import { MediaUploadButton } from "@/components/media-upload-button";
 import { DictationButton, type DictationHandle } from "@/components/dictation-button";
 import { RelativeTime } from "@/components/relative-time";
+import { NoteActions } from "./note-actions";
 
 export type Group = { id: string; name: string };
 
 type Entry = {
   id: string;
+  author_type: "owner" | "guest";
   author_label: string | null;
   body_text: string | null;
   photo_url: string | null;
@@ -191,6 +193,7 @@ export function EntriesSection({
                     </span>
                   )}
                 </p>
+                <NoteActions note={entry} calendarId={calendarId} groups={groups} />
               </div>
             </li>
           ))}

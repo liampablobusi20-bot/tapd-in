@@ -41,7 +41,7 @@ export const OWNER_STEPS: TourStep[] = [
     page: "calendar",
     target: "grid",
     title: "Tap any day or item",
-    body: "Open it to change the date and time, post notes and photos, and see its history.",
+    body: "Open it to change the date and time, post notes and photos, choose who can see it, and see its history.",
   },
   {
     page: "calendar",

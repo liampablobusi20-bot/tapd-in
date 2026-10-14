@@ -15,6 +15,7 @@ export type Phase = {
 export type Entry = {
   id: string;
   calendar_item_id: string;
+  author_type: "owner" | "guest";
   author_label: string | null;
   body_text: string | null;
   photo_url: string | null;

@@ -11,7 +11,6 @@ import {
 import { isValidShiftDays, selectPhasesToShift } from "@/lib/shift-phases";
 import { zoneAbbreviation } from "@/lib/timezone";
 import type { Group } from "./entries-section";
-import { restrictionLabel } from "@/lib/visibility-label";
 import { RelativeTime } from "@/components/relative-time";
 import { Spinner } from "@/components/pending-button";
 import { PhaseStatusSelect } from "@/components/phase-status-badge";
@@ -136,7 +135,6 @@ export function PhaseRow({
     });
   }
 
-  const limitedTo = restrictionLabel(phase.visible_group_ids, groups);
   const chip =
     "inline-block cursor-pointer rounded-full border px-2.5 py-0.5 text-xs font-medium";
   const chipOn = "border-zinc-900 bg-zinc-900 text-white";
@@ -174,9 +172,6 @@ export function PhaseRow({
           </span>
         )}
         <PhaseStatusSelect status={phase.status} onChange={saveStatus} />
-        {limitedTo && (
-          <span className="text-xs font-medium text-amber-700">Only {limitedTo}</span>
-        )}
       </div>
 
       <input
@@ -187,6 +182,42 @@ export function PhaseRow({
         className="mt-1.5 w-full rounded-lg border border-transparent px-1.5 py-1 text-sm text-zinc-600 hover:border-zinc-200 focus:border-zinc-900 focus:outline-none"
       />
 
+      {groups.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 px-1.5">
+          <span className="text-xs text-zinc-500">Visible to</span>
+          <button
+            type="button"
+            onClick={() => saveVisibility([])}
+            className={`${chip} ${restrictedTo.length === 0 && !hasDeletedGroup ? chipOn : chipOff}`}
+          >
+            Everyone
+          </button>
+          {groups.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              onClick={() => toggleGroup(group.id)}
+              aria-pressed={restrictedTo.includes(group.id)}
+              className={`${chip} ${restrictedTo.includes(group.id) ? chipOn : chipOff}`}
+            >
+              {group.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {hasDeletedGroup && (
+        <p className="mt-1 px-1.5 text-xs font-medium text-amber-700">
+          Limited to a deleted group, so only you can see this.{" "}
+          <button
+            type="button"
+            onClick={() => saveVisibility([])}
+            className="underline underline-offset-2 hover:text-amber-900"
+          >
+            Show to everyone
+          </button>
+        </p>
+      )}
+
       <details className="group mt-1 px-1.5">
         <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-zinc-400 hover:text-zinc-700 [&::-webkit-details-marker]:hidden">
           <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden>
@@ -196,42 +227,6 @@ export function PhaseRow({
         </summary>
 
         <div className="mt-2 flex flex-col gap-3 rounded-xl bg-zinc-50 p-3">
-          {groups.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-zinc-500">Visible to</span>
-              <button
-                type="button"
-                onClick={() => saveVisibility([])}
-                className={`${chip} ${restrictedTo.length === 0 && !hasDeletedGroup ? chipOn : chipOff}`}
-              >
-                Everyone
-              </button>
-              {groups.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => toggleGroup(group.id)}
-                  aria-pressed={restrictedTo.includes(group.id)}
-                  className={`${chip} ${restrictedTo.includes(group.id) ? chipOn : chipOff}`}
-                >
-                  {group.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {hasDeletedGroup && (
-            <p className="text-xs font-medium text-amber-700">
-              Limited to a deleted group, so only you can see this.{" "}
-              <button
-                type="button"
-                onClick={() => saveVisibility([])}
-                className="underline underline-offset-2 hover:text-amber-900"
-              >
-                Show to everyone
-              </button>
-            </p>
-          )}
-
           {canShift && !shiftOpen && (
             <button
               type="button"
