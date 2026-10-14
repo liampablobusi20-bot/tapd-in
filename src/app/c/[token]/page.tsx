@@ -11,6 +11,8 @@ import { AddToCalendar } from "./add-to-calendar";
 import { AssistantPanel } from "@/components/assistant-panel";
 import { ProductTour } from "@/components/tour/product-tour";
 import { signEntryMedia } from "@/lib/media-urls";
+import { buildThreads } from "@/lib/threads";
+import { GuestReply } from "./guest-reply";
 import { compareSchedule } from "@/lib/shift-phases";
 import { ItemTime } from "@/components/item-time";
 
@@ -64,7 +66,7 @@ export default async function GuestCalendarPage({
   const allEntries = supabase
     .from("entries")
     .select(
-      "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, kind, created_at"
+      "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, kind, reply_to, created_at"
     )
     .in("calendar_item_id", itemIds)
     .order("created_at", { ascending: true });
@@ -87,6 +89,52 @@ export default async function GuestCalendarPage({
     : null;
 
   const canComment = link.permission === "comment";
+  const guestName = link.contact_name ?? "";
+
+  type GuestEntry = NonNullable<typeof entries>[number];
+  function renderNote(
+    entry: GuestEntry,
+    itemId: string,
+    canReply: boolean,
+    replyingToName?: string | null
+  ) {
+    return (
+      <div className="flex items-start gap-2 text-sm">
+        {entry.photo_url && (
+          <MediaThumbnail
+            src={entry.photo_url}
+            type={
+              entry.media_type === "video" || entry.media_type === "file"
+                ? entry.media_type
+                : "image"
+            }
+            className={
+              entry.media_type === "file"
+                ? undefined
+                : "h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-zinc-200"
+            }
+          />
+        )}
+        <div className="min-w-0">
+          {entry.body_text && <p className="text-zinc-800">{entry.body_text}</p>}
+          <div className="text-xs text-zinc-500">
+            {entry.author_label}
+            {entry.author_type === "owner" ? " (owner)" : ""} ·{" "}
+            {new Date(entry.created_at).toLocaleDateString("en-US")}
+            {replyingToName && <span> · replying to {replyingToName}</span>}
+            {canReply && canComment && (
+              <GuestReply
+                token={token}
+                calendarItemId={itemId}
+                parentId={entry.id}
+                defaultName={guestName}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-svh bg-zinc-50 pb-16">
@@ -120,6 +168,7 @@ export default async function GuestCalendarPage({
         {items?.map((item) => {
           const itemEntries =
             entries?.filter((e) => e.calendar_item_id === item.id) ?? [];
+          const threads = buildThreads(itemEntries);
           return (
             <div
               key={item.id}
@@ -176,39 +225,22 @@ export default async function GuestCalendarPage({
                 </details>
               )}
 
-              {itemEntries.some((entry) => entry.kind !== "change") && (
-                <ul className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-3">
-                  {itemEntries
-                    .filter((entry) => entry.kind !== "change")
-                    .map((entry) => (
-                      <li key={entry.id} className="flex items-start gap-2 text-sm">
-                        {entry.photo_url && (
-                          <MediaThumbnail
-                            src={entry.photo_url}
-                            type={
-                              entry.media_type === "video" || entry.media_type === "file"
-                                ? entry.media_type
-                                : "image"
-                            }
-                            className={
-                              entry.media_type === "file"
-                                ? undefined
-                                : "h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-zinc-200"
-                            }
-                          />
-                        )}
-                        <div>
-                          {entry.body_text && (
-                            <p className="text-zinc-800">{entry.body_text}</p>
-                          )}
-                          <p className="text-xs text-zinc-500">
-                            {entry.author_label}
-                            {entry.author_type === "owner" ? " (owner)" : ""} ·{" "}
-                            {new Date(entry.created_at).toLocaleDateString("en-US")}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
+              {threads.length > 0 && (
+                <ul className="mt-3 flex flex-col gap-3 border-t border-zinc-100 pt-3">
+                  {threads.map(({ note, replies }) => (
+                    <li key={note.id}>
+                      {renderNote(note, item.id, true)}
+                      {replies.length > 0 && (
+                        <ul className="ml-3 mt-2 flex flex-col gap-2.5 border-l-2 border-zinc-200 pl-3">
+                          {replies.map((reply) => (
+                            <li key={reply.id}>
+                              {renderNote(reply, item.id, false, note.author_label)}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
                 </ul>
               )}
 

@@ -80,7 +80,7 @@ export const GUEST_STEPS: TourStep[] = [
   {
     target: "comment",
     title: "Join the conversation",
-    body: "Post notes and photos on any item. Only the people it's shared with see them.",
+    body: "Post notes and photos on any item, or reply to a comment. Only the people it's shared with see them.",
   },
   {
     target: "assistant",

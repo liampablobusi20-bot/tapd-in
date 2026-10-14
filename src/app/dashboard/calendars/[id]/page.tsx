@@ -39,7 +39,7 @@ export default async function CalendarPage({
     ? await supabase
         .from("entries")
         .select(
-          "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, visible_group_ids, kind, created_at"
+          "id, calendar_item_id, author_type, author_label, body_text, photo_url, media_type, visible_group_ids, kind, reply_to, created_at"
         )
         .in("calendar_item_id", itemIds)
         .order("created_at", { ascending: true })

@@ -184,7 +184,7 @@ export function PhaseRow({
 
       {groups.length > 0 && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 px-1.5">
-          <span className="text-xs text-zinc-500">Visible to</span>
+          <span className="text-xs font-medium text-zinc-600">Who can see this item:</span>
           <button
             type="button"
             onClick={() => saveVisibility([])}
@@ -204,6 +204,12 @@ export function PhaseRow({
             </button>
           ))}
         </div>
+      )}
+      {groups.length === 0 && (
+        <p className="mt-1.5 px-1.5 text-xs text-zinc-400">
+          Everyone invited can see this item. To limit it to certain people, create a group under
+          Invite people.
+        </p>
       )}
       {hasDeletedGroup && (
         <p className="mt-1 px-1.5 text-xs font-medium text-amber-700">

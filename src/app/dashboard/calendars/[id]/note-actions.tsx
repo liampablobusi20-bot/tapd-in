@@ -22,10 +22,12 @@ export function NoteActions({
   note,
   calendarId,
   groups,
+  replyCount = 0,
 }: {
   note: NoteForActions;
   calendarId: string;
   groups: Group[];
+  replyCount?: number;
 }) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -62,7 +64,7 @@ export function NoteActions({
       <div className="mt-1.5 flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white p-2.5">
         {groups.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-zinc-500">Visible to</span>
+            <span className="text-xs text-zinc-500">Who can see this note</span>
             <button
               type="button"
               disabled={pending}
@@ -144,7 +146,7 @@ export function NoteActions({
             )}
             {confirming ? (
               <span className="flex items-center gap-2 text-xs text-zinc-600">
-                Delete this note?
+                Delete this note{replyCount > 0 ? ` and its ${replyCount} ${replyCount === 1 ? "reply" : "replies"}` : ""}?
                 <button
                   type="button"
                   disabled={pending}

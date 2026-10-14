@@ -50,13 +50,34 @@ export async function createEntry(
 
   if (!bodyText && !mediaUrl) return;
 
+  // A reply points at one comment on this same item. It stays under that
+  // comment (replies to a reply attach to the original), and is visible to
+  // exactly the people who can see the comment it answers.
+  const replyToRaw = String(formData.get("reply_to") ?? "").trim() || null;
+  let replyRootId: string | null = null;
+  let replyParentAuthor: string | null = null;
+  let replyAudience: string[] | null = null;
+  if (replyToRaw) {
+    const { data: parent } = await supabase
+      .from("entries")
+      .select("id, reply_to, kind, author_label, visible_group_ids, calendar_item_id")
+      .eq("id", replyToRaw)
+      .maybeSingle();
+    if (!parent || parent.calendar_item_id !== calendarItemId || parent.kind !== "note") {
+      throw new Error("Not found.");
+    }
+    replyRootId = parent.reply_to ?? parent.id;
+    replyParentAuthor = parent.author_label;
+    replyAudience = (parent.visible_group_ids as string[] | null) ?? null;
+  }
+
   // No group ids = visible to everyone. Otherwise every id must be a group on
   // this calendar, so a tampered form can't point at someone else's group.
   const requestedGroupIds = [
     ...new Set(formData.getAll("visible_group_ids").map(String).filter(Boolean)),
   ];
-  let visibleGroupIds: string[] | null = null;
-  if (requestedGroupIds.length) {
+  let visibleGroupIds: string[] | null = replyToRaw ? replyAudience : null;
+  if (!replyToRaw && requestedGroupIds.length) {
     const { data: groups } = await supabase
       .from("guest_groups")
       .select("id")
@@ -77,6 +98,7 @@ export async function createEntry(
     photo_url: mediaUrl,
     media_type: mediaType,
     visible_group_ids: visibleGroupIds,
+    reply_to: replyRootId,
   });
 
   if (error) throw new Error(error.message);
@@ -85,7 +107,9 @@ export async function createEntry(
   const what = bodyText
     ? `"${snippet(bodyText)}"`
     : `shared a ${mediaType === "image" ? "photo" : (mediaType ?? "file")}`;
-  const message = `${authorLabel} on "${item.label}": ${what}`;
+  const message = replyToRaw
+    ? `${authorLabel} replied to ${replyParentAuthor ?? "a comment"} on "${item.label}": ${what}`
+    : `${authorLabel} on "${item.label}": ${what}`;
   after(() => notifyGuestsOfChange(calendarId, message, undefined, visibleGroupIds));
 }
 
@@ -148,9 +172,16 @@ export async function deleteEntry(entryId: string, calendarId: string) {
     throw new Error("Schedule history can't be deleted.");
   }
 
+  // Replies are deleted along with their comment, so their files go too.
+  const { data: replies } = await supabase
+    .from("entries")
+    .select("photo_url")
+    .eq("reply_to", entryId);
+
   const { error } = await supabase.from("entries").delete().eq("id", entryId);
   if (error) throw new Error(error.message);
 
   await removeEntryMedia(entry.photo_url);
+  for (const reply of replies ?? []) await removeEntryMedia(reply.photo_url);
   revalidatePath(`/dashboard/calendars/${calendarId}`);
 }

@@ -22,5 +22,6 @@ export type Entry = {
   media_type: string | null;
   visible_group_ids: string[] | null;
   kind: "note" | "change";
+  reply_to: string | null;
   created_at: string;
 };

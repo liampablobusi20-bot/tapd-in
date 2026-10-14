@@ -10,6 +10,8 @@ import { MediaUploadButton } from "@/components/media-upload-button";
 import { DictationButton, type DictationHandle } from "@/components/dictation-button";
 import { RelativeTime } from "@/components/relative-time";
 import { NoteActions } from "./note-actions";
+import { ReplyBox } from "@/components/reply-box";
+import { buildThreads } from "@/lib/threads";
 
 export type Group = { id: string; name: string };
 
@@ -22,6 +24,7 @@ type Entry = {
   media_type: string | null;
   visible_group_ids: string[] | null;
   kind: "note" | "change";
+  reply_to: string | null;
   created_at: string;
 };
 
@@ -40,6 +43,7 @@ export function EntriesSection({
   const formId = useId();
   const dictationRef = useRef<DictationHandle>(null);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [media, setMedia] = useState<{
@@ -134,7 +138,7 @@ export function EntriesSection({
   }
 
   const groupNames = new Map(groups.map((g) => [g.id, g.name]));
-  const notes = entries.filter((entry) => entry.kind !== "change");
+  const threads = buildThreads(entries);
   const history = entries.filter((entry) => entry.kind === "change");
   const selectedNames = groups
     .filter((group) => selectedGroups.includes(group.id))
@@ -143,6 +147,61 @@ export function EntriesSection({
     "inline-block cursor-pointer rounded-full border px-2.5 py-0.5 text-xs font-medium";
   const chipOn = "border-zinc-900 bg-zinc-900 text-white";
   const chipOff = "border-zinc-300 bg-white text-zinc-600 hover:border-zinc-400";
+
+  const replyCountOf = (noteId: string) =>
+    threads.find((thread) => thread.note.id === noteId)?.replies.length ?? 0;
+
+  function renderNote(entry: Entry, canReply: boolean, replyingToName?: string | null) {
+    return (
+      <div className="flex items-start gap-2.5 text-sm">
+        {entry.photo_url && (
+          <MediaThumbnail
+            src={entry.photo_url}
+            type={
+              entry.media_type === "video" || entry.media_type === "file"
+                ? entry.media_type
+                : "image"
+            }
+          />
+        )}
+        <div>
+          {entry.body_text && <p className="text-zinc-800">{entry.body_text}</p>}
+          <p className="text-xs text-zinc-500">
+            {entry.author_label} · <RelativeTime date={entry.created_at} />
+            {replyingToName && <span> · replying to {replyingToName}</span>}
+            {entry.visible_group_ids && (
+              <span className="font-medium text-amber-700">
+                {" "}
+                · Only{" "}
+                {entry.visible_group_ids
+                  .map((id) => groupNames.get(id))
+                  .filter(Boolean)
+                  .join(", ") || "a deleted group"}
+              </span>
+            )}
+            {canReply && (
+              <>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => setReplyingTo(replyingTo === entry.id ? null : entry.id)}
+                  className="font-medium text-zinc-500 hover:text-zinc-900"
+                >
+                  Reply
+                </button>
+              </>
+            )}
+          </p>
+          <NoteActions
+            note={entry}
+            calendarId={calendarId}
+            groups={groups}
+            replyCount={replyCountOf(entry.id)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-zinc-100 bg-zinc-50/60 px-4 py-3">
@@ -164,37 +223,31 @@ export function EntriesSection({
         </details>
       )}
 
-      {notes.length > 0 && (
-        <ul className="mb-3 flex flex-col gap-2.5">
-          {notes.map((entry) => (
-            <li key={entry.id} className="flex items-start gap-2.5 text-sm">
-              {entry.photo_url && (
-                <MediaThumbnail
-                  src={entry.photo_url}
-                  type={
-                    entry.media_type === "video" || entry.media_type === "file"
-                      ? entry.media_type
-                      : "image"
-                  }
-                />
+      {threads.length > 0 && (
+        <ul className="mb-3 flex flex-col gap-3">
+          {threads.map(({ note, replies }) => (
+            <li key={note.id}>
+              {renderNote(note, true)}
+              {replies.length > 0 && (
+                <ul className="ml-3 mt-2 flex flex-col gap-2.5 border-l-2 border-zinc-200 pl-3">
+                  {replies.map((reply) => (
+                    <li key={reply.id}>{renderNote(reply, false, note.author_label)}</li>
+                  ))}
+                </ul>
               )}
-              <div>
-                {entry.body_text && <p className="text-zinc-800">{entry.body_text}</p>}
-                <p className="text-xs text-zinc-500">
-                  {entry.author_label} · <RelativeTime date={entry.created_at} />
-                  {entry.visible_group_ids && (
-                    <span className="font-medium text-amber-700">
-                      {" "}
-                      · Only{" "}
-                      {entry.visible_group_ids
-                        .map((id) => groupNames.get(id))
-                        .filter(Boolean)
-                        .join(", ") || "a deleted group"}
-                    </span>
-                  )}
-                </p>
-                <NoteActions note={entry} calendarId={calendarId} groups={groups} />
-              </div>
+              {replyingTo === note.id && (
+                <div className="ml-3 border-l-2 border-zinc-200 pl-3">
+                  <ReplyBox
+                    onCancel={() => setReplyingTo(null)}
+                    onSend={async (text) => {
+                      const formData = new FormData();
+                      formData.set("body_text", text);
+                      formData.set("reply_to", note.id);
+                      await createEntry(calendarItemId, calendarId, formData);
+                    }}
+                  />
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -291,7 +344,7 @@ export function EntriesSection({
             <svg viewBox="0 0 20 20" fill="none" className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden>
               <path d="M7 4l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Visible to: {selectedNames.length ? selectedNames.join(", ") : "everyone"}
+            Who can see this note: {selectedNames.length ? selectedNames.join(", ") : "everyone"}
           </summary>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <button

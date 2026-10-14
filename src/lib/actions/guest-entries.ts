@@ -41,6 +41,28 @@ export async function addGuestEntry(
 
   if (!bodyText && !mediaUrl) return;
 
+  // A reply must answer a comment on this item that this guest can see.
+  const replyToRaw = String(formData.get("reply_to") ?? "").trim() || null;
+  let replyRootId: string | null = null;
+  let replyParentAuthor: string | null = null;
+  if (replyToRaw) {
+    const { data: parent } = await supabase
+      .from("entries")
+      .select("id, reply_to, kind, author_label, visible_group_ids, calendar_item_id")
+      .eq("id", replyToRaw)
+      .maybeSingle();
+    if (
+      !parent ||
+      parent.calendar_item_id !== calendarItemId ||
+      parent.kind !== "note" ||
+      !isVisibleToGuest(parent.visible_group_ids, link.group_id)
+    ) {
+      throw new Error("Not found.");
+    }
+    replyRootId = parent.reply_to ?? parent.id;
+    replyParentAuthor = parent.author_label;
+  }
+
   // A grouped guest's posts stay within their own group (plus the Owner), so
   // e.g. a sub's pricing comment can't leak to the client. Ungrouped guests
   // post to everyone, as before.
@@ -54,6 +76,7 @@ export async function addGuestEntry(
     photo_url: mediaUrl,
     media_type: mediaType,
     visible_group_ids: visibleGroupIds,
+    reply_to: replyRootId,
   });
   if (error) throw new Error(error.message);
 
@@ -61,6 +84,8 @@ export async function addGuestEntry(
   const what = bodyText
     ? `"${snippet(bodyText)}"`
     : `shared a ${mediaType === "image" ? "photo" : (mediaType ?? "file")}`;
-  const message = `${authorLabel} on "${item.label}": ${what}`;
+  const message = replyToRaw
+    ? `${authorLabel} replied to ${replyParentAuthor ?? "a comment"} on "${item.label}": ${what}`
+    : `${authorLabel} on "${item.label}": ${what}`;
   after(() => notifyGuestsOfChange(link.calendar_id, message, token, visibleGroupIds));
 }
