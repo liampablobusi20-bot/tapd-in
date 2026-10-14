@@ -165,14 +165,17 @@ export function EntriesSection({
           />
         )}
         <div>
+          <p className="text-xs text-zinc-500">
+            <span className="font-semibold text-zinc-900">{entry.author_label}</span>
+            {" · "}
+            <RelativeTime date={entry.created_at} />
+          </p>
           {entry.body_text && <p className="text-zinc-800">{entry.body_text}</p>}
           <p className="text-xs text-zinc-500">
-            {entry.author_label} · <RelativeTime date={entry.created_at} />
-            {replyingToName && <span> · replying to {replyingToName}</span>}
+            {replyingToName && <span>replying to {replyingToName}</span>}
             {entry.visible_group_ids && (
               <span className="font-medium text-amber-700">
-                {" "}
-                · Only{" "}
+                {replyingToName ? " · " : ""}Only{" "}
                 {entry.visible_group_ids
                   .map((id) => groupNames.get(id))
                   .filter(Boolean)
@@ -181,7 +184,7 @@ export function EntriesSection({
             )}
             {canReply && (
               <>
-                {" · "}
+                {(replyingToName || entry.visible_group_ids) && " · "}
                 <button
                   type="button"
                   onClick={() => setReplyingTo(replyingTo === entry.id ? null : entry.id)}

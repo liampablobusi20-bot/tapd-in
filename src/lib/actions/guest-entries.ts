@@ -30,8 +30,12 @@ export async function addGuestEntry(
   }
 
   const bodyText = String(formData.get("body_text") ?? "").trim();
+  // Posts go out under the name this person was invited as, so nobody can
+  // sign a message as someone else. Only links with no name use what was typed.
   const authorLabel =
-    String(formData.get("author_name") ?? "").trim() || "Guest";
+    link.contact_name?.trim() ||
+    String(formData.get("author_name") ?? "").trim().slice(0, 80) ||
+    "Guest";
   const mediaUrl = String(formData.get("media_url") ?? "").trim() || null;
   const mediaTypeRaw = String(formData.get("media_type") ?? "").trim();
   const mediaType =

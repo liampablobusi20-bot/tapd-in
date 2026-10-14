@@ -114,13 +114,21 @@ export function GuestEntryForm({
       action={handleSubmit}
       className="mt-3 flex flex-col gap-2"
     >
-      <input
-        type="text"
-        name="author_name"
-        defaultValue={defaultName}
-        placeholder="Your name"
-        className="rounded-md border border-zinc-300 px-3 py-2 text-base text-zinc-900 focus:border-zinc-900 focus:outline-none"
-      />
+      {defaultName ? (
+        <>
+          <input type="hidden" name="author_name" value={defaultName} />
+          <p className="text-xs text-zinc-500">
+            Commenting as <span className="font-medium text-zinc-700">{defaultName}</span>
+          </p>
+        </>
+      ) : (
+        <input
+          type="text"
+          name="author_name"
+          placeholder="Your name"
+          className="rounded-md border border-zinc-300 px-3 py-2 text-base text-zinc-900 focus:border-zinc-900 focus:outline-none"
+        />
+      )}
       {localPreview && (
         <div className="flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-2 py-1.5">
           {localPreview.type === "image" && (

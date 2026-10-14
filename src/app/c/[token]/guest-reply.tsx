@@ -11,17 +11,19 @@ export function GuestReply({
   calendarItemId,
   parentId,
   defaultName,
+  leadingDot = false,
 }: {
   token: string;
   calendarItemId: string;
   parentId: string;
   defaultName: string;
+  leadingDot?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      {" · "}
+      {leadingDot && " · "}
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

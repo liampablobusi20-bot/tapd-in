@@ -116,21 +116,26 @@ export default async function GuestCalendarPage({
           />
         )}
         <div className="min-w-0">
-          {entry.body_text && <p className="text-zinc-800">{entry.body_text}</p>}
           <div className="text-xs text-zinc-500">
-            {entry.author_label}
+            <span className="font-semibold text-zinc-900">{entry.author_label}</span>
             {entry.author_type === "owner" ? " (owner)" : ""} ·{" "}
             {new Date(entry.created_at).toLocaleDateString("en-US")}
-            {replyingToName && <span> · replying to {replyingToName}</span>}
-            {canReply && canComment && (
-              <GuestReply
-                token={token}
-                calendarItemId={itemId}
-                parentId={entry.id}
-                defaultName={guestName}
-              />
-            )}
           </div>
+          {entry.body_text && <p className="text-zinc-800">{entry.body_text}</p>}
+          {(replyingToName || (canReply && canComment)) && (
+            <div className="text-xs text-zinc-500">
+              {replyingToName && <span>replying to {replyingToName}</span>}
+              {canReply && canComment && (
+                <GuestReply
+                  token={token}
+                  calendarItemId={itemId}
+                  parentId={entry.id}
+                  defaultName={guestName}
+                  leadingDot={Boolean(replyingToName)}
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
