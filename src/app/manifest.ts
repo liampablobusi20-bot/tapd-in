@@ -4,11 +4,11 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Tapd In",
     short_name: "Tapd In",
-    description: "A shared project calendar for contractors, subs, and clients.",
+    description: "A weekly briefing from the email you choose.",
     start_url: "/dashboard",
     display: "standalone",
-    background_color: "#fafafa",
-    theme_color: "#18181b",
+    background_color: "#faf8f4",
+    theme_color: "#24433a",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

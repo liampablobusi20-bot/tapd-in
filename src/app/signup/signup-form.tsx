@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { signup } from "@/lib/actions/auth";
+import { btnPrimary, field, label } from "@/components/ui";
 
 export function SignupForm() {
   const [state, action, pending] = useActionState(signup, undefined);
@@ -10,17 +11,12 @@ export function SignupForm() {
   if (state?.needsConfirmation) {
     return (
       <div className="flex flex-col gap-2">
-        <h2 className="text-base font-semibold text-zinc-900">
-          Check your email
-        </h2>
-        <p className="text-sm text-zinc-600">
-          We sent you a confirmation link. Click it to activate your account,
-          then come back and log in.
+        <h2 className="font-display text-2xl tracking-tight">Check your email</h2>
+        <p className="text-sm leading-relaxed text-muted">
+          We sent you a confirmation link. Click it to activate your account, then come back and log
+          in.
         </p>
-        <Link
-          href="/login"
-          className="mt-2 text-sm font-medium text-zinc-900 underline"
-        >
+        <Link href="/login" className="mt-3 text-sm font-medium text-ink underline underline-offset-4">
           Back to log in
         </Link>
       </div>
@@ -29,24 +25,14 @@ export function SignupForm() {
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="text-sm font-medium text-zinc-700">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="email" className={label}>
           Email
         </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className="rounded-md border border-zinc-300 px-3 py-2 text-base text-zinc-900 focus:border-zinc-900 focus:outline-none"
-        />
+        <input id="email" name="email" type="email" required autoComplete="email" className={field} />
       </div>
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor="password"
-          className="text-sm font-medium text-zinc-700"
-        >
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="password" className={label}>
           Password
         </label>
         <input
@@ -55,21 +41,17 @@ export function SignupForm() {
           type="password"
           required
           autoComplete="new-password"
-          className="rounded-md border border-zinc-300 px-3 py-2 text-base text-zinc-900 focus:border-zinc-900 focus:outline-none"
+          className={field}
         />
-        <p className="text-xs text-zinc-500">At least 8 characters.</p>
+        <p className="text-xs text-faint">At least 8 characters.</p>
       </div>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-2 rounded-md bg-zinc-900 px-4 py-2 text-base font-medium text-white disabled:opacity-50"
-      >
-        {pending ? "Creating account…" : "Sign up"}
+      {state?.error && <p className="text-sm text-alert">{state.error}</p>}
+      <button type="submit" disabled={pending} className={`${btnPrimary} mt-2 w-full py-3`}>
+        {pending ? "Creating account…" : "Request access"}
       </button>
-      <p className="text-sm text-zinc-600">
+      <p className="text-center text-sm text-muted">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-zinc-900 underline">
+        <Link href="/login" className="font-medium text-ink underline underline-offset-4">
           Log in
         </Link>
       </p>

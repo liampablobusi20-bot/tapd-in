@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEmail } from "@/lib/notify";
+import { sendEmail } from "@/lib/email";
 import { composeDigest } from "@/lib/inbox/digest";
 
 // Sends one owner's update for a window. With a weekKey it is sent at most once
@@ -60,7 +60,7 @@ export async function sendDigest(
     ),
     weekStart: window.startIso,
     weekEnd: window.endIso,
-    appUrl: site ? `${site}/dashboard/inbox` : undefined,
+    appUrl: site ? `${site}/dashboard` : undefined,
   });
 
   const ok = await sendEmail(owner.email, digest.subject, digest.text);

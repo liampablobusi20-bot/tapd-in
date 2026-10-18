@@ -1,3 +1,4 @@
+import { Wordmark } from "@/components/ui";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage({
@@ -8,19 +9,20 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4">
-      <div className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-2xl font-semibold text-zinc-900">Tapd In</h1>
-        <p className="mb-6 text-sm text-zinc-600">
-          Log in to manage your project calendars.
-        </p>
+    <div className="flex flex-1 flex-col items-center justify-center px-5 py-16">
+      <Wordmark className="mb-10" />
+      <div className="w-full max-w-sm rounded-3xl border border-line bg-card p-8 shadow-[0_1px_2px_rgba(27,26,23,0.04),0_12px_32px_-12px_rgba(27,26,23,0.12)]">
+        <h1 className="font-display text-3xl tracking-tight">Welcome back</h1>
+        <p className="mt-1.5 text-sm text-muted">Log in to see your briefing.</p>
         {error === "confirmation-failed" && (
-          <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            That confirmation link is invalid or expired. Try signing up
-            again, or log in if you already confirmed.
+          <p className="mt-5 rounded-xl bg-alert-soft px-4 py-3 text-sm text-alert">
+            That confirmation link is invalid or expired. Try signing up again, or log in if you
+            already confirmed.
           </p>
         )}
-        <LoginForm />
+        <div className="mt-6">
+          <LoginForm />
+        </div>
       </div>
     </div>
   );

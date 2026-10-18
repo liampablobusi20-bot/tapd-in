@@ -1,11 +1,11 @@
 "use server";
 
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ingestMessage, processPending } from "@/lib/inbox/process";
+import { processPending } from "@/lib/inbox/process";
 import { lastSevenDays } from "@/lib/inbox/digest";
 import { sendDigest } from "@/lib/inbox/send-digest";
 
@@ -62,7 +62,8 @@ export async function addCategory(formData: FormData) {
     sort_order: count ?? 0,
   });
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/inbox");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
 }
 
 export async function deleteCategory(id: string) {
@@ -73,7 +74,8 @@ export async function deleteCategory(id: string) {
     .eq("id", id)
     .eq("owner_id", user.id);
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/inbox");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
 }
 
 // "This isn't business" / clean-up: removes a message and its summary.
@@ -82,37 +84,19 @@ export async function deleteInboxMessage(id: string) {
   const admin = createAdminClient();
   const { error } = await admin.from("inbox_messages").delete().eq("id", id).eq("owner_id", user.id);
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/inbox");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
 }
 
-// Lets an owner try the sorting by pasting a message, without waiting for mail.
-export async function addSampleMessage(formData: FormData) {
-  const { user } = await requireInboxOwner();
-  const body = String(formData.get("body") ?? "").trim().slice(0, 5000);
-  if (!body) return;
-  const senderName = String(formData.get("sender") ?? "").trim().slice(0, 80) || "Test sender";
-  const subject = String(formData.get("subject") ?? "").trim().slice(0, 200) || null;
-
-  const admin = createAdminClient();
-  const since = new Date(Date.now() - 86_400_000).toISOString();
-  const { count } = await admin
-    .from("inbox_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", user.id)
-    .like("external_id", "manual-%")
-    .gte("created_at", since);
-  if ((count ?? 0) >= 30) throw new Error("That's enough test messages for today.");
-
-  await ingestMessage(user.id, `manual-${randomUUID()}`, {
-    source: "forward",
-    senderName,
-    senderAddress: null,
-    subject,
-    body,
-    receivedAt: new Date().toISOString(),
-  });
-  await processPending(5);
-  revalidatePath("/dashboard/inbox");
+export async function updateName(formData: FormData) {
+  const { supabase, user } = await requireInboxOwner();
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60);
+  const { error } = await supabase
+    .from("users")
+    .update({ display_name: name || null })
+    .eq("id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/settings");
 }
 
 export type TestDigestResult = { status: "sent" | "failed" } | undefined;

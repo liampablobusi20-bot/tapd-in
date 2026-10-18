@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { costMicros, type Usage } from "@/lib/inbox/pricing";
 import {
   TRIAGE_SYSTEM,
   buildTriageUser,
@@ -19,7 +20,7 @@ export async function triageWithModel(
   client: Pick<Anthropic, "messages">,
   categories: Category[],
   message: IncomingMessage
-): Promise<Triage | null> {
+): Promise<{ triage: Triage; usage: Usage } | null> {
   try {
     const response = await client.messages.create({
       model: MODEL,
@@ -31,7 +32,18 @@ export async function triageWithModel(
       .filter((block): block is Anthropic.TextBlock => block.type === "text")
       .map((block) => block.text)
       .join("\n");
-    return parseTriage(text, categories);
+    const triage = parseTriage(text, categories);
+    if (!triage) return null;
+    return {
+      triage,
+      usage: {
+        inputTokens:
+          response.usage.input_tokens +
+          (response.usage.cache_creation_input_tokens ?? 0) +
+          (response.usage.cache_read_input_tokens ?? 0),
+        outputTokens: response.usage.output_tokens,
+      },
+    };
   } catch (err) {
     // Never log the message itself; it can be private.
     console.error("Inbox triage failed:", err instanceof Error ? err.message : "unknown error");
@@ -122,8 +134,9 @@ export async function processPending(limit = BATCH) {
       categoriesByOwner.set(row.owner_id, data ?? []);
     }
 
-    const triage = await triageWithModel(client, categoriesByOwner.get(row.owner_id)!, message);
-    if (triage) {
+    const result = await triageWithModel(client, categoriesByOwner.get(row.owner_id)!, message);
+    if (result) {
+      const { triage, usage } = result;
       await supabase
         .from("inbox_messages")
         .update({
@@ -131,6 +144,9 @@ export async function processPending(limit = BATCH) {
           category_id: triage.categoryId,
           summary: triage.summary,
           importance: triage.importance,
+          input_tokens: usage.inputTokens,
+          output_tokens: usage.outputTokens,
+          cost_micros: costMicros(usage),
           raw_text: null,
           processed_at: new Date().toISOString(),
         })

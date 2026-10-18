@@ -1,6 +1,62 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { btnPrimary, btnSecondary, eyebrow, Wordmark } from "@/components/ui";
+
+const steps = [
+  {
+    n: "01",
+    title: "Forward what matters",
+    body: "Send the email you want included to your private Tapd In address. You choose what comes in, nothing more.",
+  },
+  {
+    n: "02",
+    title: "It sorts and summarizes",
+    body: "Each message is placed under the topics you set up, then boiled down to a sentence: who wrote, and what they need.",
+  },
+  {
+    n: "03",
+    title: "Read it Monday",
+    body: "One calm email with the week laid out by topic. Anything urgent rises to the top.",
+  },
+];
+
+const principles = [
+  {
+    title: "You choose what's included",
+    body: "Only the messages you forward are read. Everything else stays where it is.",
+  },
+  {
+    title: "Summaries, not archives",
+    body: "Once a message is summarized, its text is deleted. We keep the summary and who it was from.",
+  },
+  {
+    title: "Written by an AI, said plainly",
+    body: "Summaries are produced by Claude, an AI model from Anthropic. Reply from your own inbox, as you always have.",
+  },
+];
+
+const example = [
+  {
+    topic: "Clients",
+    items: [
+      { who: "Dana Ruiz", day: "Thu", urgent: true, text: "The revised contract needs your signature by Friday or the 12% discount expires." },
+      { who: "Priya Shah", day: "Tue", text: "Asked to move the quarterly review to the 24th." },
+    ],
+  },
+  {
+    topic: "Team",
+    items: [
+      { who: "Marcus Lee", day: "Wed", text: "Can't make the 3pm staff meeting; suggests Friday morning instead." },
+    ],
+  },
+  {
+    topic: "Vendors",
+    items: [
+      { who: "Harbor Print", day: "Mon", text: "Proofs are approved and the order ships Thursday." },
+    ],
+  },
+];
 
 export default async function Home() {
   const supabase = await createClient();
@@ -11,105 +67,134 @@ export default async function Home() {
   if (user) redirect("/dashboard");
 
   return (
-    <div className="min-h-svh bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <span className="text-lg font-semibold text-zinc-900">Tapd In</span>
-          <div className="flex items-center gap-4 text-sm font-medium">
-            <Link href="/login" className="text-zinc-600 hover:text-zinc-900">
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-lg bg-zinc-900 px-3.5 py-1.5 text-white hover:bg-zinc-800"
-            >
-              Sign up
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-          One shared place for your team&apos;s schedule and conversation
-        </h1>
-        <p className="mt-4 text-lg leading-relaxed text-zinc-600">
-          Tapd In is a shared project calendar for teams that need everyone on
-          the same page — project managers, executives, contractors, and
-          clients. Owners build a schedule of items with dates and times, then
-          share a link. Guests can view it, comment, and add files without ever
-          creating an account, and each note can be limited to the groups who
-          should see it.
-        </p>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/signup"
-            className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800"
-          >
-            Get started
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-lg border border-zinc-300 bg-white px-5 py-2.5 text-sm font-medium text-zinc-700 shadow-sm hover:border-zinc-400"
-          >
+    <div className="min-h-svh">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 sm:px-10">
+        <Wordmark />
+        <nav className="flex items-center gap-5 text-sm">
+          <Link href="/login" className="text-muted transition-colors hover:text-ink">
             Log in
           </Link>
-        </div>
+          <Link href="/signup" className={btnPrimary}>
+            Request access
+          </Link>
+        </nav>
+      </header>
 
-        <div className="mt-16 grid gap-8 sm:grid-cols-2">
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900">
-              Build a schedule
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">
-              Add items with a name, date, time, and notes. Owners manage
-              the calendar from a simple month view or day-by-day list.
-            </p>
+      <main>
+        <section className="mx-auto max-w-6xl px-6 pb-20 pt-14 sm:px-10 sm:pb-28 sm:pt-24">
+          <p className={eyebrow}>A weekly briefing for busy people</p>
+          <h1 className="mt-6 max-w-4xl font-display text-[44px] leading-[1.02] tracking-tight sm:text-7xl lg:text-[88px]">
+            Everything that mattered this week.{" "}
+            <span className="italic text-accent">One email.</span>
+          </h1>
+          <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted sm:text-xl">
+            Tapd In reads the email you choose, sorts it by topic, and sends a short briefing every
+            Monday: who said what, and what&apos;s waiting on you.
+          </p>
+          <div className="mt-10 flex flex-wrap items-center gap-3">
+            <Link href="/signup" className={`${btnPrimary} px-7 py-3.5 text-[15px]`}>
+              Request access
+            </Link>
+            <a href="#example" className={`${btnSecondary} px-7 py-3.5 text-[15px]`}>
+              See an example
+            </a>
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900">
-              Invite without accounts
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">
-              Guests open a unique link to view the calendar, and — if
-              permitted — post comments and photos. No sign-up required.
-            </p>
+        </section>
+
+        <section id="example" className="border-y border-line bg-[#f3efe7] px-6 py-20 sm:px-10 sm:py-28">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
+            <div>
+              <p className={eyebrow}>What lands in your inbox</p>
+              <h2 className="mt-5 font-display text-4xl leading-[1.05] tracking-tight sm:text-5xl">
+                A briefing you can read in two minutes.
+              </h2>
+              <p className="mt-6 max-w-md text-lg leading-relaxed text-muted">
+                Grouped by the topics you care about. Urgent items first. Every line names the person
+                and the point, so you never have to open the thread to know where things stand.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-line bg-card p-7 shadow-[0_1px_2px_rgba(27,26,23,0.04),0_30px_60px_-30px_rgba(27,26,23,0.25)] sm:p-9">
+              <div className="flex items-baseline justify-between gap-4 border-b border-line pb-5">
+                <p className="font-display text-2xl tracking-tight">Your week</p>
+                <p className="text-xs text-faint">Oct 5 – Oct 11</p>
+              </div>
+              <div className="mt-6 flex flex-col gap-7">
+                {example.map((group) => (
+                  <div key={group.topic}>
+                    <p className={eyebrow}>{group.topic}</p>
+                    <ul className="mt-3 flex flex-col gap-3.5">
+                      {group.items.map((item) => (
+                        <li key={item.who} className="text-[15px] leading-relaxed">
+                          <span className="font-semibold">{item.who}</span>
+                          <span className="text-faint"> · {item.day}</span>
+                          {item.urgent && (
+                            <span className="ml-2 rounded-full bg-alert-soft px-2 py-0.5 align-middle text-[11px] font-medium text-alert">
+                              Urgent
+                            </span>
+                          )}
+                          <span className="mt-0.5 block text-muted">{item.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-8 border-t border-line pt-4 text-xs text-faint">Illustrative example</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900">
-              Text and email updates
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">
-              Anyone with a calendar link — Owner or Guest — can opt in to
-              get a text or email whenever that project&apos;s schedule
-              changes. Opt-in happens right on the calendar page: enter a
-              phone number or email and tap to subscribe. Message and data
-              rates may apply for texts; reply <strong>STOP</strong> to
-              unsubscribe or <strong>HELP</strong> for help, at any time.
-            </p>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 py-20 sm:px-10 sm:py-28">
+          <p className={eyebrow}>How it works</p>
+          <div className="mt-10 grid gap-12 sm:grid-cols-3 sm:gap-10">
+            {steps.map((step) => (
+              <div key={step.n}>
+                <p className="font-display text-5xl italic text-accent/40">{step.n}</p>
+                <h3 className="mt-4 text-lg font-semibold tracking-tight">{step.title}</h3>
+                <p className="mt-2 leading-relaxed text-muted">{step.body}</p>
+              </div>
+            ))}
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900">
-              Photos and files
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">
-              Attach photos, videos, or documents to any item to keep a
-              visual record of progress alongside the schedule.
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 pb-24 sm:px-10 sm:pb-32">
+          <div className="rounded-3xl bg-accent px-8 py-14 text-paper sm:px-14 sm:py-16">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-paper/60">
+              Private by design
             </p>
+            <div className="mt-8 grid gap-10 sm:grid-cols-3 sm:gap-12">
+              {principles.map((item) => (
+                <div key={item.title}>
+                  <h3 className="font-display text-2xl leading-tight tracking-tight">{item.title}</h3>
+                  <p className="mt-3 text-[15px] leading-relaxed text-paper/75">{item.body}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 pb-28 text-center sm:px-10 sm:pb-36">
+          <h2 className="mx-auto max-w-2xl font-display text-4xl leading-[1.05] tracking-tight sm:text-6xl">
+            Spend Monday catching up on decisions, not inboxes.
+          </h2>
+          <div className="mt-10">
+            <Link href="/signup" className={`${btnPrimary} px-8 py-3.5 text-[15px]`}>
+              Request access
+            </Link>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t border-zinc-200 px-6 py-6">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 text-sm text-zinc-500">
+      <footer className="border-t border-line px-6 py-8 sm:px-10">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 text-sm text-muted">
           <span>&copy; 2026 Tapd In</span>
-          <div className="flex gap-4">
+          <div className="flex gap-6">
             <a
               href="https://tapd-in-privacy-policy-v2.vercel.app"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-zinc-700"
+              className="transition-colors hover:text-ink"
             >
               Privacy Policy
             </a>
@@ -117,7 +202,7 @@ export default async function Home() {
               href="https://tapd-in-terms-of-service.vercel.app"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-zinc-700"
+              className="transition-colors hover:text-ink"
             >
               Terms of Service
             </a>

@@ -1,78 +1,151 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { CreateCalendarForm } from "./create-calendar-form";
-import { OwnerSettings } from "./owner-settings";
+import { btnPrimary, eyebrow } from "@/components/ui";
+import { RemoveButton, TestDigestButton } from "./inbox-forms";
 
-export default async function DashboardPage() {
+const TZ = "America/Phoenix";
+
+const sevenDaysAgo = () => new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+type Message = {
+  id: string;
+  sender_name: string | null;
+  sender_address: string | null;
+  subject: string | null;
+  summary: string | null;
+  importance: "urgent" | "normal" | "low" | null;
+  status: string;
+  category_id: string | null;
+  received_at: string;
+};
+
+function dayLabel(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: TZ });
+}
+
+function replyHref(m: Message) {
+  if (!m.sender_address) return null;
+  const subject = m.subject?.trim() ? `Re: ${m.subject.replace(/^re:\s*/i, "")}` : "";
+  return `mailto:${m.sender_address}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
+}
+
+function MessageRow({ m, tag }: { m: Message; tag?: string }) {
+  const reply = replyHref(m);
+  return (
+    <li className="py-5 first:pt-0 last:pb-0">
+      <p className="text-[15px] leading-snug">
+        <span className="font-semibold">{m.sender_name || m.sender_address || "Someone"}</span>
+        <span className="text-faint"> · {dayLabel(m.received_at)}</span>
+        {tag && <span className="text-faint"> · {tag}</span>}
+        {m.importance === "urgent" && (
+          <span className="ml-2 rounded-full bg-alert-soft px-2 py-0.5 align-middle text-[11px] font-medium text-alert">
+            Urgent
+          </span>
+        )}
+      </p>
+      <p className="mt-1.5 text-[15px] leading-relaxed text-muted">
+        {m.status === "pending" ? "Sorting…" : m.status === "failed" ? "This one couldn't be read." : m.summary}
+      </p>
+      <div className="mt-3 flex items-center gap-5 text-xs text-faint">
+        {reply && (
+          <a href={reply} className="font-medium transition-colors hover:text-ink">
+            Reply
+          </a>
+        )}
+        <RemoveButton id={m.id} kind="message" label="Not business" />
+      </div>
+    </li>
+  );
+}
+
+export default async function BriefingPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-  const { data: calendars } = await supabase
-    .from("calendars")
-    .select("id, name, created_at")
-    .eq("owner_id", user!.id)
-    .order("created_at", { ascending: false });
+  const since = sevenDaysAgo();
+  const [{ data: profile }, { data: categories }, { data: rows }] = await Promise.all([
+    supabase.from("users").select("display_name").eq("id", user.id).single(),
+    supabase.from("inbox_categories").select("id, name").order("sort_order", { ascending: true }),
+    supabase
+      .from("inbox_messages")
+      .select("id, sender_name, sender_address, subject, summary, importance, status, category_id, received_at")
+      .neq("status", "skipped")
+      .gte("received_at", since)
+      .order("received_at", { ascending: false })
+      .limit(200),
+  ]);
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("plan, onboarded_at, display_name, notify_email")
-    .eq("id", user!.id)
-    .single();
+  const messages = (rows ?? []) as Message[];
+  const shown = messages.filter((m) => m.importance !== "low" || m.status !== "processed");
+  const urgent = shown.filter((m) => m.importance === "urgent");
+  const rest = shown.filter((m) => m.importance !== "urgent");
+  const topicName = new Map((categories ?? []).map((c) => [c.id, c.name]));
+  const known = new Set((categories ?? []).map((c) => c.id));
+  const sections = [
+    ...(categories ?? []).map((c) => ({ key: c.id, title: c.name, items: rest.filter((m) => m.category_id === c.id) })),
+    { key: "other", title: "Other", items: rest.filter((m) => !m.category_id || !known.has(m.category_id)) },
+  ].filter((s) => s.items.length > 0);
 
-  const atFreeLimit =
-    profile?.plan === "free" && (calendars?.length ?? 0) >= 1;
+  const name = profile?.display_name?.trim();
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-10">
-      <h1 className="text-xl font-semibold text-zinc-900">Your calendars</h1>
-      <p className="mt-1 text-sm text-zinc-600">
-        One calendar per project. Invite subs and clients once it&apos;s set up.
-      </p>
-
-      <ul className="mt-6 flex flex-col gap-2.5">
-        {calendars?.map((calendar) => (
-          <li key={calendar.id}>
-            <Link
-              href={`/dashboard/calendars/${calendar.id}`}
-              className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3.5 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md"
-            >
-              <span className="font-medium text-zinc-900">
-                {calendar.name}
-              </span>
-              <span className="text-sm text-zinc-500">
-                {new Date(calendar.created_at).toLocaleDateString("en-US")}
-              </span>
-            </Link>
-          </li>
-        ))}
-        {calendars?.length === 0 && (
-          <li className="rounded-xl border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500">
-            No calendars yet — create your first one below.
-          </li>
-        )}
-      </ul>
-
-      {atFreeLimit ? (
-        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm shadow-sm">
-          <p className="font-medium text-amber-900">
-            You&apos;ve reached the free plan limit (1 calendar).
-          </p>
-          <p className="mt-1 text-amber-800">
-            Upgrade to Pro to create more projects — billing isn&apos;t wired
-            up yet, so reach out for now if you need another one.
-          </p>
+    <div className="mx-auto max-w-3xl px-6 py-14 sm:py-20">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <p className={eyebrow}>Last 7 days</p>
+          <h1 className="mt-4 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">
+            {name ? `${name}, here's your week.` : "Your week, briefly."}
+          </h1>
         </div>
-      ) : (
-        <CreateCalendarForm />
+        <TestDigestButton />
+      </div>
+
+      {shown.length > 0 && (
+        <p className="mt-6 text-muted">
+          {shown.length} {shown.length === 1 ? "message" : "messages"} sorted
+          {urgent.length > 0 && <> · <span className="font-medium text-alert">{urgent.length} urgent</span></>}
+        </p>
       )}
 
-      <OwnerSettings
-        email={user!.email ?? ""}
-        displayName={profile?.display_name ?? null}
-        notifyEmail={profile?.notify_email ?? true}
-      />
+      {shown.length === 0 ? (
+        <div className="mt-14 rounded-3xl border border-line bg-card p-8 sm:p-12">
+          <h2 className="font-display text-3xl tracking-tight">Nothing here yet.</h2>
+          <p className="mt-3 max-w-md leading-relaxed text-muted">
+            Set up your topics, then forward an email to your private address. It will show up here, sorted
+            and summarized, within a minute.
+          </p>
+          <Link href="/dashboard/settings" className={`${btnPrimary} mt-8`}>
+            Set up your inbox
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-12 flex flex-col gap-12">
+          {urgent.length > 0 && (
+            <section>
+              <p className={`${eyebrow} text-alert`}>Needs your attention</p>
+              <ul className="mt-5 divide-y divide-line rounded-3xl border border-alert/20 bg-card p-7 sm:p-8">
+                {urgent.map((m) => (
+                  <MessageRow key={m.id} m={m} tag={(m.category_id && topicName.get(m.category_id)) || undefined} />
+                ))}
+              </ul>
+            </section>
+          )}
+          {sections.map((section) => (
+            <section key={section.key}>
+              <p className={eyebrow}>{section.title}</p>
+              <ul className="mt-5 divide-y divide-line rounded-3xl border border-line bg-card p-7 sm:p-8">
+                {section.items.map((m) => (
+                  <MessageRow key={m.id} m={m} />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
