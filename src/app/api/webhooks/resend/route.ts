@@ -70,7 +70,11 @@ export async function POST(request: Request) {
 
   // The webhook only carries metadata; the text comes from a second call.
   const res = await fetch(`https://api.resend.com/emails/receiving/${data.email_id}?html_format=cid`, {
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+    // Reading received mail needs a key with receiving access; the everyday
+    // sending key is restricted to sending, so this uses its own.
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_RECEIVING_API_KEY ?? process.env.RESEND_API_KEY}`,
+    },
   });
   if (!res.ok) {
     console.error("Fetching received email failed:", res.status);
