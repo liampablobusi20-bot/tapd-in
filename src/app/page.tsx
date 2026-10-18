@@ -190,20 +190,10 @@ export default async function Home() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 text-sm text-muted">
           <span>&copy; 2026 Tapd In</span>
           <div className="flex gap-6">
-            <a
-              href="https://tapd-in-privacy-policy-v2.vercel.app"
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors hover:text-ink"
-            >
+            <a href="/privacy" className="transition-colors hover:text-ink">
               Privacy Policy
             </a>
-            <a
-              href="https://tapd-in-terms-of-service.vercel.app"
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors hover:text-ink"
-            >
+            <a href="/terms" className="transition-colors hover:text-ink">
               Terms of Service
             </a>
           </div>

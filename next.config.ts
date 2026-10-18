@@ -8,10 +8,13 @@ const nextConfig: NextConfig = {
   // segment-by-segment, not as a real CIDR range — covers the common
   // home-router ranges.
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
-  // Photo/video bytes upload directly from the browser to Supabase Storage
-  // via a signed URL (see src/hooks/use-media-upload.ts) — they never pass
-  // through a Server Action body, which on Vercel is hard-capped around
-  // 4.5MB regardless of this setting. Server Actions here only carry text.
+  // The legal pages are plain HTML files in /public, served at clean URLs.
+  async rewrites() {
+    return [
+      { source: "/privacy", destination: "/privacy.html" },
+      { source: "/terms", destination: "/terms.html" },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {
