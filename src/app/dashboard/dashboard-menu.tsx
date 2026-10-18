@@ -27,9 +27,11 @@ const statusColors: Record<string, string> = {
 export function DashboardMenu({
   plan,
   subscriptionStatus,
+  inboxEnabled = false,
 }: {
   plan: string;
   subscriptionStatus: string;
+  inboxEnabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,6 +92,15 @@ export function DashboardMenu({
             </div>
           </div>
           <div className="my-1.5 border-t border-zinc-100" />
+          {inboxEnabled && (
+            <Link
+              href="/dashboard/inbox"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-zinc-700 hover:bg-zinc-50"
+            >
+              Inbox
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => {

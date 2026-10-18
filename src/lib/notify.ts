@@ -1,10 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-async function sendEmail(to: string, subject: string, text: string) {
+export async function sendEmail(to: string, subject: string, text: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("RESEND_API_KEY not set — skipping email notification");
-    return;
+    return false;
   }
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -21,8 +21,10 @@ async function sendEmail(to: string, subject: string, text: string) {
       }),
     });
     if (!res.ok) console.error("Resend email failed:", res.status, await res.text());
+    return res.ok;
   } catch (err) {
     console.error("Resend email error:", err);
+    return false;
   }
 }
 

@@ -17,7 +17,7 @@ export default async function DashboardLayout({
   const { data: profile } = user
     ? await supabase
         .from("users")
-        .select("plan, subscription_status, onboarded_at")
+        .select("plan, subscription_status, onboarded_at, inbox_enabled")
         .eq("id", user.id)
         .single()
     : { data: null };
@@ -38,6 +38,7 @@ export default async function DashboardLayout({
         <DashboardMenu
           plan={profile?.plan ?? "free"}
           subscriptionStatus={profile?.subscription_status ?? "trialing"}
+          inboxEnabled={Boolean(profile?.inbox_enabled)}
         />
         <div className="flex items-center gap-4">
           <AddToHomeScreenButton className="text-sm font-medium text-zinc-600 hover:text-zinc-900" />

@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/inbox?job=process", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/inbox?job=digest", "schedule": "0 14 * * 1" }
+  ]
+}
