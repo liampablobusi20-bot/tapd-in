@@ -2,28 +2,12 @@
 
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireInboxOwner } from "@/lib/inbox/require-owner";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { processPending } from "@/lib/inbox/process";
+import { syncOwnerMicrosoft } from "@/lib/inbox/microsoft-sync";
 import { lastSevenDays } from "@/lib/inbox/digest";
 import { sendDigest } from "@/lib/inbox/send-digest";
-
-// Every inbox action starts here: a signed-in owner whose inbox is switched on.
-async function requireInboxOwner() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const { data: profile } = await supabase
-    .from("users")
-    .select("inbox_enabled")
-    .eq("id", user.id)
-    .single();
-  if (!profile?.inbox_enabled) redirect("/dashboard");
-  return { supabase, user };
-}
 
 // The forwarding address is made on first visit and never changes.
 export async function ensureInboxToken(): Promise<string> {
@@ -103,6 +87,7 @@ export type TestDigestResult = { status: "sent" | "failed" } | undefined;
 
 export async function sendTestDigest(): Promise<TestDigestResult> {
   const { user } = await requireInboxOwner();
+  await syncOwnerMicrosoft(user.id);
   await processPending(20);
   const status = await sendDigest(user.id, lastSevenDays(Date.now()));
   return { status: status === "sent" ? "sent" : "failed" };

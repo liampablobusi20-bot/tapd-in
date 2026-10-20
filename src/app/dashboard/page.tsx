@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { btnPrimary, eyebrow } from "@/components/ui";
+import { replyLink } from "@/lib/inbox/texts";
 import { RemoveButton, TestDigestButton } from "./inbox-forms";
 
 const TZ = "America/Phoenix";
@@ -10,6 +11,7 @@ const sevenDaysAgo = () => new Date(Date.now() - 7 * 86_400_000).toISOString();
 
 type Message = {
   id: string;
+  source: string;
   sender_name: string | null;
   sender_address: string | null;
   subject: string | null;
@@ -25,6 +27,7 @@ function dayLabel(iso: string) {
 }
 
 function replyHref(m: Message) {
+  if (m.source === "sms") return replyLink(m.sender_address);
   if (!m.sender_address) return null;
   const subject = m.subject?.trim() ? `Re: ${m.subject.replace(/^re:\s*/i, "")}` : "";
   return `mailto:${m.sender_address}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
@@ -37,6 +40,7 @@ function MessageRow({ m, tag }: { m: Message; tag?: string }) {
       <p className="text-[15px] leading-snug">
         <span className="font-semibold">{m.sender_name || m.sender_address || "Someone"}</span>
         <span className="text-faint"> · {dayLabel(m.received_at)}</span>
+        {m.source === "sms" && <span className="text-faint"> · Text</span>}
         {tag && <span className="text-faint"> · {tag}</span>}
         {m.importance === "urgent" && (
           <span className="ml-2 rounded-full bg-alert-soft px-2 py-0.5 align-middle text-[11px] font-medium text-alert">
@@ -72,7 +76,7 @@ export default async function BriefingPage() {
     supabase.from("inbox_categories").select("id, name").order("sort_order", { ascending: true }),
     supabase
       .from("inbox_messages")
-      .select("id, sender_name, sender_address, subject, summary, importance, status, category_id, received_at")
+      .select("id, source, sender_name, sender_address, subject, summary, importance, status, category_id, received_at")
       .neq("status", "skipped")
       .gte("received_at", since)
       .order("received_at", { ascending: false })

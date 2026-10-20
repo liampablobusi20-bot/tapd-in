@@ -112,13 +112,13 @@
     </header>
 
     <p class="intro">
-      Tapd In ("we," "our," "us") sends you a weekly briefing built from the email you choose to forward to us. We read those messages with an AI service, sort them into topics you set up, and summarize them. This policy explains what we collect, how we use it, who we share it with, and your choices.
+      Tapd In ("we," "our," "us") sends you a weekly briefing built from the email you choose to forward or connect and the text messages you choose to include. We read those messages with an AI service, sort them into topics you set up, and summarize them. This policy explains what we collect, how we use it, who we share it with, and your choices.
     </p>
 
     <div class="summary">
       <h3>In short</h3>
       <ul>
-        <li>We only read the messages you send to your private Tapd In address.</li>
+        <li>We only read email you forward or connect, and texts from contacts you choose.</li>
         <li>An AI service (Claude, from Anthropic) reads each message to write a short summary.</li>
         <li>Once a message is summarized, we delete its text. We keep the summary, who it was from, and the subject line.</li>
         <li>We never sell your information or use it for advertising.</li>
@@ -130,10 +130,12 @@
     <p><strong>Messages you forward to us.</strong> When you forward an email to your Tapd In address, we receive its content so we can process it:</p>
     <ul>
       <li>The sender's name and email address, the subject line, and the date it was sent</li>
-      <li>The text of the message (if a message has only formatted content, we convert it to plain text). We do not process or store attachments.</li>
+      <li>The text of the message (if a message has only formatted content, we convert it to plain text). We do not process or store attachments or photos.</li>
     </ul>
+    <p><strong>Email from a connected account.</strong> If you connect an Outlook or Microsoft 365 account, you approve read-only access on Microsoft's own sign-in screen. We then read new mail in the account's Inbox folder: the sender's name and address, the subject, the date, and the message text. We do not read other folders, attachments, or contacts, and we cannot send, delete, or change anything in your mailbox. We store a sign-in token for the connection, encrypted, so we can keep checking for new mail until you disconnect.</p>
+    <p><strong>Text messages from contacts you choose.</strong> If you connect a Mac, you pick the people whose texts count as business. A small helper on your Mac reads only incoming texts from those people and sends us the text, the sender's name and phone number or email, and the time. Texts from anyone else are never read or sent, and texts you send are not collected. We process these texts the same way as forwarded email.</p>
     <p><strong>What we create from them.</strong> A short summary of each message, the topic it was sorted into, and a flag for whether it looks urgent.</p>
-    <p><strong>Your settings.</strong> The topics you create and the descriptions you give them.</p>
+    <p><strong>Your settings.</strong> The topics you create and the descriptions you give them, the contacts you allow for texts, and the keys for any Mac you connect (we store only a scrambled version of each key).</p>
     <p><strong>Usage information.</strong> How many messages were processed and how much processing each used, so we can run and price the service. We also collect basic technical data (such as device type and browser) for security and troubleshooting.</p>
     <p><strong>Billing information</strong>, if you subscribe to a paid plan. It is handled by our payment provider; we do not store full card numbers.</p>
 
@@ -157,6 +159,7 @@
     <ul>
       <li><strong>Message text</strong> is held only until the message has been processed, normally within a minute or two. It is then deleted. If a message cannot be processed after a few attempts, its text is deleted and it is marked as failed.</li>
       <li><strong>Summaries, senders, subject lines, and dates</strong> are kept while your account is active, or until you delete them. Choosing <strong>Not business</strong> on a message deletes it.</li>
+      <li><strong>The sign-in token for a connected email account</strong> is kept until you disconnect it, and is deleted when you do.</li>
       <li><strong>Account information</strong> is kept until you ask us to close your account. When we close it, we delete your messages, summaries, and settings.</li>
     </ul>
 
@@ -166,14 +169,16 @@
       <li><strong>Anthropic</strong> — AI processing of messages, as described above</li>
       <li><strong>Supabase</strong> — database and authentication</li>
       <li><strong>Vercel</strong> — hosting and scheduled jobs</li>
+      <li><strong>Microsoft</strong> — provides the read-only access to a mailbox you choose to connect</li>
       <li><strong>Resend</strong> — receiving the email you forward to us and sending your briefing</li>
       <li><strong>Sentry</strong> — error monitoring. We do not intentionally send message content to it.</li>
       <li><strong>Stripe</strong> — payment processing, if you subscribe to a paid plan</li>
     </ul>
     <p>These providers process data on our behalf and may not use it for other purposes. We do not share your data with advertisers or data brokers. We may disclose information if required by law, or to protect the rights, safety, or property of Tapd In, our users, or the public.</p>
 
-    <h2><span class="num">7.</span>Text Messages and Other Connections</h2>
-    <p>Tapd In does not currently read text messages or connect directly to your email account; it only processes what you forward to your private address. If we add those options, they will include only the conversations or messages you choose, and we will update this policy before they are available.</p>
+    <h2><span class="num">7.</span>Connections and Text Messages</h2>
+    <p><strong>Email connections.</strong> Connecting Outlook or Microsoft 365 is optional. You can disconnect at any time in Settings, which deletes the stored sign-in so no more mail can be read, and you can also remove Tapd In's access from your Microsoft account. If you prefer, you can forward email to your private address instead of connecting. We do not currently connect to other email providers.</p>
+    <p><strong>Text messages</strong> are included only if you connect a device and choose contacts. Nothing is read from anyone you have not chosen, and the choosing happens on your own device, so other people's texts never leave it. You can remove a contact or disconnect a device at any time in Settings, and it stops sending right away. If we add more connections, they will include only what you choose, and we will update this policy before they are available.</p>
 
     <h2><span class="num">8.</span>Earlier Versions of Tapd In</h2>
     <p>Earlier versions of Tapd In offered shared project calendars, with invite links, comments, photos, and optional text or email alerts. That feature has been retired and is no longer available. Information from it, such as calendars, notes, uploaded files, and contact details for invited guests, may still be stored until it is deleted. To have it deleted, contact us at the address below and we will remove it.</p>

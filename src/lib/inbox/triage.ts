@@ -32,8 +32,22 @@ export type Triage = {
 const AUTOMATED_SENDERS =
   /^(no-?reply|do-?not-?reply|donotreply|notifications?|mailer-daemon|postmaster|bounce[s]?|newsletter|alerts?)([+._-].*)?$/i;
 
+const ACKS = new Set([
+  "ok", "okay", "k", "kk", "thanks", "thank you", "thx", "ty", "yes", "yep", "yeah", "no", "nope",
+  "sure", "lol", "haha", "got it", "will do", "sounds good", "np", "cool", "great", "nice", "perfect",
+]);
+
+// "ok", "thanks", a lone emoji: texts that carry no news.
+export function isAckText(text: string): boolean {
+  const t = text.toLowerCase().replace(/[.!?,\s]+$/g, "").trim();
+  if (!t) return true;
+  if (ACKS.has(t)) return true;
+  return /^[\p{Extended_Pictographic}\s\uFE0F\u200D]+$/u.test(t);
+}
+
 // Returns why a message isn't worth an AI call, or null if it should be read.
 export function skipReason(message: IncomingMessage): string | null {
+  if (message.source === "sms" && isAckText(message.body)) return "acknowledgement";
   const h = message.headers ?? {};
   if (h.listUnsubscribe) return "mailing list";
   if (h.precedence && /^(bulk|list|junk)$/i.test(h.precedence.trim())) return "bulk mail";
@@ -67,6 +81,7 @@ export const TRIAGE_SYSTEM = [
   'Reply with ONLY a JSON object: {"category": <number or null>, "summary": <string>, "importance": "urgent" | "normal" | "low"}.',
   "category: the number of the best-fitting category from the list, or null if none fit.",
   "summary: one or two plain sentences saying what the sender wants, decided, or reported. Start with the point, not 'The sender'. Include any date, amount or deadline mentioned. Maximum 280 characters.",
+  "Keep the summary matter-of-fact and about what was said. Do not comment on who the sender is, whether their address looks personal or unfamiliar, what the reader should verify or do, or what the message lacks (such as a missing subject or details). Do not give advice. Only say a message looks suspicious if it clearly asks for money, passwords, or account details.",
   "importance: urgent = needs action or a reply today or has a deadline within days; low = FYI, thanks, or pleasantries; otherwise normal.",
 ].join("\n");
 
