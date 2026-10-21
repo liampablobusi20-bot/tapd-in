@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { btnPrimary, eyebrow } from "@/components/ui";
-import { replyLink } from "@/lib/inbox/texts";
+import { formatPhone, isNumberLabel, replyLink } from "@/lib/inbox/texts";
+import { groupConversations } from "@/lib/inbox/conversations";
+import { ConversationButton, NameNumber } from "./texts-forms";
 import { RemoveButton, TestDigestButton } from "./inbox-forms";
 
 const TZ = "America/Phoenix";
@@ -33,12 +35,12 @@ function replyHref(m: Message) {
   return `mailto:${m.sender_address}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
 }
 
-function MessageRow({ m, tag }: { m: Message; tag?: string }) {
+function MessageRow({ m, tag, convoCount = 1 }: { m: Message; tag?: string; convoCount?: number }) {
   const reply = replyHref(m);
   return (
     <li className="py-5 first:pt-0 last:pb-0">
       <p className="text-[15px] leading-snug">
-        <span className="font-semibold">{m.sender_name || m.sender_address || "Someone"}</span>
+        <span className="font-semibold">{m.source === "sms" && m.sender_address && isNumberLabel(m.sender_name) ? formatPhone(m.sender_address) : m.sender_name || m.sender_address || "Someone"}</span>
         <span className="text-faint"> · {dayLabel(m.received_at)}</span>
         {m.source === "sms" && <span className="text-faint"> · Text</span>}
         {tag && <span className="text-faint"> · {tag}</span>}
@@ -51,13 +53,15 @@ function MessageRow({ m, tag }: { m: Message; tag?: string }) {
       <p className="mt-1.5 text-[15px] leading-relaxed text-muted">
         {m.status === "pending" ? "Sorting…" : m.status === "failed" ? "This one couldn't be read." : m.summary}
       </p>
-      <div className="mt-3 flex items-center gap-5 text-xs text-faint">
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-faint">
         {reply && (
           <a href={reply} className="font-medium transition-colors hover:text-ink">
             Reply
           </a>
         )}
         <RemoveButton id={m.id} kind="message" label="Not business" />
+        {m.source === "sms" && m.sender_address && isNumberLabel(m.sender_name) && <NameNumber handle={m.sender_address} />}
+        {convoCount > 1 && <ConversationButton messageId={m.id} count={convoCount} />}
       </div>
     </li>
   );
@@ -84,8 +88,12 @@ export default async function BriefingPage() {
   ]);
 
   const messages = (rows ?? []) as Message[];
-  const shown = messages.filter((m) => m.importance !== "low" || m.status !== "processed");
+  // Low-importance email stays out of the way. Texts are always shown, because they
+  // only come from people the owner chose.
+  const shown = messages.filter((m) => m.importance !== "low" || m.status !== "processed" || m.source === "sms");
   const urgent = shown.filter((m) => m.importance === "urgent");
+  const convos = groupConversations(shown.filter((m) => m.source === "sms" && m.status === "processed"));
+  const convoCount = (m: Message) => convos.get(m.id)?.length ?? 1;
   const rest = shown.filter((m) => m.importance !== "urgent");
   const topicName = new Map((categories ?? []).map((c) => [c.id, c.name]));
   const known = new Set((categories ?? []).map((c) => c.id));
@@ -133,7 +141,7 @@ export default async function BriefingPage() {
               <p className={`${eyebrow} text-alert`}>Needs your attention</p>
               <ul className="mt-5 divide-y divide-line rounded-3xl border border-alert/20 bg-card p-7 sm:p-8">
                 {urgent.map((m) => (
-                  <MessageRow key={m.id} m={m} tag={(m.category_id && topicName.get(m.category_id)) || undefined} />
+                  <MessageRow key={m.id} m={m} convoCount={convoCount(m)} tag={(m.category_id && topicName.get(m.category_id)) || undefined} />
                 ))}
               </ul>
             </section>
@@ -143,7 +151,7 @@ export default async function BriefingPage() {
               <p className={eyebrow}>{section.title}</p>
               <ul className="mt-5 divide-y divide-line rounded-3xl border border-line bg-card p-7 sm:p-8">
                 {section.items.map((m) => (
-                  <MessageRow key={m.id} m={m} />
+                  <MessageRow key={m.id} m={m} convoCount={convoCount(m)} />
                 ))}
               </ul>
             </section>

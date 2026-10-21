@@ -79,3 +79,16 @@ export function replyLink(handle: string | null | undefined): string | null {
   if (digits.length === 10) return `sms:+1${digits}`;
   return digits.length >= 7 ? `sms:+${digits}` : null;
 }
+
+// A stored number shown the way people write it.
+export function formatPhone(handle: string): string {
+  if (handle.includes("@")) return handle;
+  const digits = handle.replace(/\D/g, "");
+  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return digits ? `+${digits}` : handle;
+}
+
+// True when a sender label is only a number, so it's worth offering to name it.
+export function isNumberLabel(label: string | null | undefined): boolean {
+  return !label || !/[a-z]/i.test(label);
+}

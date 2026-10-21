@@ -6,25 +6,25 @@ import { btnPrimary, btnSecondary, eyebrow, Wordmark } from "@/components/ui";
 const steps = [
   {
     n: "01",
-    title: "Forward what matters",
-    body: "Send the email you want included to your private Tapd In address. You choose what comes in, nothing more.",
+    title: "Connect Outlook",
+    body: "Sign in with Microsoft once. Tapd In gets read-only access to your inbox, so it can read but never send, delete, or change anything.",
   },
   {
     n: "02",
-    title: "It sorts and summarizes",
-    body: "Each message is placed under the topics you set up, then boiled down to a sentence: who wrote, and what they need.",
+    title: "Pick the texts that matter",
+    body: "On your iPhone, choose the people whose texts count as business. Everyone else's texts stay on your phone.",
   },
   {
     n: "03",
     title: "Read it Monday",
-    body: "One calm email with the week laid out by topic. Anything urgent rises to the top.",
+    body: "One calm email with your week laid out by topic: who said what, by email or text, with anything urgent at the top.",
   },
 ];
 
 const principles = [
   {
-    title: "You choose what's included",
-    body: "Only the messages you forward are read. Everything else stays where it is.",
+    title: "Only Outlook and the texts you pick",
+    body: "It reads your Outlook inbox and texts from the people you choose. Nothing else, and nothing you don't connect.",
   },
   {
     title: "Summaries, not archives",
@@ -32,22 +32,24 @@ const principles = [
   },
   {
     title: "Written by an AI, said plainly",
-    body: "Summaries are produced by Claude, an AI model from Anthropic. Reply from your own inbox, as you always have.",
+    body: "Summaries are produced by Claude, an AI model from Anthropic. Reply from your own inbox and phone, as you always have.",
   },
 ];
 
-const example = [
+type ExampleItem = { who: string; day: string; text: string; urgent?: boolean; via?: string };
+
+const example: { topic: string; items: ExampleItem[] }[] = [
   {
     topic: "Clients",
     items: [
       { who: "Dana Ruiz", day: "Thu", urgent: true, text: "The revised contract needs your signature by Friday or the 12% discount expires." },
-      { who: "Priya Shah", day: "Tue", text: "Asked to move the quarterly review to the 24th." },
+      { who: "Priya Shah", day: "Tue", via: "Text", text: "Asked to move the quarterly review to the 24th." },
     ],
   },
   {
     topic: "Team",
     items: [
-      { who: "Marcus Lee", day: "Wed", text: "Can't make the 3pm staff meeting; suggests Friday morning instead." },
+      { who: "Marcus Lee", day: "Wed", via: "Text", text: "Can't make the 3pm staff meeting; suggests Friday morning instead." },
     ],
   },
   {
@@ -88,8 +90,8 @@ export default async function Home() {
             <span className="italic text-accent">One email.</span>
           </h1>
           <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted sm:text-xl">
-            Tapd In reads the email you choose, sorts it by topic, and sends a short briefing every
-            Monday: who said what, and what&apos;s waiting on you.
+            Tapd In reads your Outlook email and the texts you choose, sorts them by topic, and sends a
+            short briefing every Monday: who said what, and what&apos;s waiting on you.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-3">
             <Link href="/signup" className={`${btnPrimary} px-7 py-3.5 text-[15px]`}>
@@ -109,8 +111,8 @@ export default async function Home() {
                 A briefing you can read in two minutes.
               </h2>
               <p className="mt-6 max-w-md text-lg leading-relaxed text-muted">
-                Grouped by the topics you care about. Urgent items first. Every line names the person
-                and the point, so you never have to open the thread to know where things stand.
+                Emails and texts, grouped by the topics you care about. Urgent items first. Every line names
+                the person and the point, so you never have to open the thread to know where things stand.
               </p>
             </div>
 
@@ -128,6 +130,7 @@ export default async function Home() {
                         <li key={item.who} className="text-[15px] leading-relaxed">
                           <span className="font-semibold">{item.who}</span>
                           <span className="text-faint"> · {item.day}</span>
+                          {item.via && <span className="text-faint"> · {item.via}</span>}
                           {item.urgent && (
                             <span className="ml-2 rounded-full bg-alert-soft px-2 py-0.5 align-middle text-[11px] font-medium text-alert">
                               Urgent

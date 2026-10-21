@@ -1,9 +1,12 @@
 "use server";
 
+import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireInboxOwner } from "@/lib/inbox/require-owner";
 import { generateKey, normalizeHandle } from "@/lib/inbox/texts";
+import { conversationKey, groupConversations } from "@/lib/inbox/conversations";
+import { summarizeConversationNotes } from "@/lib/inbox/conversation-summary";
 
 const MAX_CONTACTS = 100;
 const MAX_KEYS = 5;
@@ -67,4 +70,73 @@ export async function revokeTextKey(id: string) {
     .eq("owner_id", user.id);
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard/settings");
+}
+
+export type ConversationResult = { summary: string; count: number } | { error: string };
+
+// Combines the one-line notes already kept for a conversation into a short
+// summary. Runs only when asked for, and uses the summaries, not the original texts.
+export async function summarizeConversation(messageId: string): Promise<ConversationResult> {
+  const { supabase, user } = await requireInboxOwner();
+
+  const { data: start } = await supabase
+    .from("inbox_messages")
+    .select("id, source, sender_name, sender_address, received_at")
+    .eq("id", messageId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (!start || start.source !== "sms") return { error: "Conversations are available for texts." };
+
+  const center = Date.parse(start.received_at);
+  const { data: rows } = await supabase
+    .from("inbox_messages")
+    .select("id, sender_name, sender_address, received_at, summary")
+    .eq("owner_id", user.id)
+    .eq("source", "sms")
+    .eq("status", "processed")
+    .gte("received_at", new Date(center - 2 * 86_400_000).toISOString())
+    .lte("received_at", new Date(center + 2 * 86_400_000).toISOString())
+    .limit(300);
+
+  const same = (rows ?? []).filter((r) => conversationKey(r) === conversationKey(start) && r.summary);
+  const ids = groupConversations(same).get(start.id) ?? [start.id];
+  const members = same
+    .filter((r) => ids.includes(r.id))
+    .sort((a, b) => Date.parse(a.received_at) - Date.parse(b.received_at))
+    .slice(-30);
+  if (members.length < 2) return { error: "There's only one text in this conversation." };
+
+  const notes = members.map((r) => ({
+    at: new Date(r.received_at).toLocaleString("en-US", {
+      weekday: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "America/Phoenix",
+    }),
+    summary: r.summary as string,
+  }));
+  const summary = await summarizeConversationNotes(new Anthropic(), start.sender_name ?? "this person", notes);
+  return summary ? { summary, count: members.length } : { error: "Couldn't summarize that. Try again." };
+}
+
+// Gives a phone number a name. Every text already received from that number is
+// relabeled, and future ones use the name.
+export async function nameTextNumber(handleRaw: string, nameRaw: string) {
+  const { supabase, user } = await requireInboxOwner();
+  const handle = normalizeHandle(handleRaw);
+  const name = nameRaw.trim().slice(0, 80);
+  if (!handle || !name) throw new Error("Add a name.");
+
+  const { error } = await supabase
+    .from("inbox_text_names")
+    .upsert({ owner_id: user.id, handle, name }, { onConflict: "owner_id,handle" });
+  if (error) throw new Error(error.message);
+
+  await createAdminClient()
+    .from("inbox_messages")
+    .update({ sender_name: name })
+    .eq("owner_id", user.id)
+    .eq("source", "sms")
+    .eq("sender_address", handle);
+  revalidatePath("/dashboard");
 }

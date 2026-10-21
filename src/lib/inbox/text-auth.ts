@@ -1,11 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { KEY_PREFIX, hashKey } from "@/lib/inbox/texts";
 
-// Works out whose device is calling from its bearer key. A key that is unknown,
-// revoked, or belongs to an account whose inbox is switched off gets nothing.
-export async function ownerFromBearer(request: Request): Promise<{ ownerId: string } | null> {
-  const header = request.headers.get("authorization") ?? "";
-  const key = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+// Works out whose device is calling from its key. A key that is unknown, revoked,
+// or belongs to an account whose inbox is switched off gets nothing.
+export async function ownerFromKey(key: string): Promise<{ ownerId: string } | null> {
   if (!key.startsWith(KEY_PREFIX) || key.length > 100) return null;
 
   const supabase = createAdminClient();
@@ -28,4 +26,9 @@ export async function ownerFromBearer(request: Request): Promise<{ ownerId: stri
     .update({ last_used_at: new Date().toISOString() })
     .eq("id", row.id);
   return { ownerId: row.owner_id };
+}
+
+export function ownerFromBearer(request: Request) {
+  const header = request.headers.get("authorization") ?? "";
+  return ownerFromKey(header.startsWith("Bearer ") ? header.slice(7).trim() : "");
 }

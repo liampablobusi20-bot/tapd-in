@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Tapd In",
     short_name: "Tapd In",
-    description: "A weekly briefing from the email you choose.",
+    description: "A weekly briefing from your Outlook email and the texts you choose.",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#faf8f4",

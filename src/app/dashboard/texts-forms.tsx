@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { addTextContact, createTextKey, removeTextContact, revokeTextKey } from "@/lib/actions/texts";
+import { addTextContact, createTextKey, removeTextContact, revokeTextKey, summarizeConversation, nameTextNumber } from "@/lib/actions/texts";
 import { disconnectEmail } from "@/lib/actions/connections";
 import { PendingButton, Spinner } from "@/components/pending-button";
 import { btnPrimary, btnSecondary, field } from "@/components/ui";
@@ -137,5 +137,140 @@ export function KeyMaker() {
       </button>
       {error && <span className="text-sm text-alert">{error}</span>}
     </div>
+  );
+}
+
+export function ConversationButton({ messageId, count }: { messageId: string; count: number }) {
+  const [pending, start] = useTransition();
+  const [summary, setSummary] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (summary) {
+    return (
+      <div className="mt-3 w-full rounded-2xl bg-paper p-4 text-sm leading-relaxed text-ink">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">Whole conversation</p>
+        <p className="mt-2 text-muted">{summary}</p>
+        <button type="button" onClick={() => setSummary(null)} className="mt-3 text-xs text-faint hover:text-ink">
+          Hide
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-3">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            setError(null);
+            const result = await summarizeConversation(messageId);
+            if ("error" in result) setError(result.error);
+            else setSummary(result.summary);
+          })
+        }
+        className="inline-flex items-center gap-1.5 font-medium text-faint transition-colors hover:text-ink disabled:opacity-60"
+      >
+        {pending && <Spinner className="h-3 w-3" />}
+        {pending ? "Summarizing…" : `Summarize the conversation (${count} texts)`}
+      </button>
+      {error && <span className="text-alert">{error}</span>}
+    </span>
+  );
+}
+
+export function PhoneSetup({ origin }: { origin: string }) {
+  const [pending, start] = useTransition();
+  const [address, setAddress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  if (address) {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-muted">Your private address. Tap Copy, then keep going with the steps below.</p>
+        <code className="break-all rounded-xl border border-line bg-paper px-4 py-3 text-xs text-ink">{address}</code>
+        <button
+          type="button"
+          className={`${btnPrimary} self-start`}
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(address);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            } catch {
+              /* the address above can still be pressed and held to copy */
+            }
+          }}
+        >
+          {copied ? "Copied" : "Copy address"}
+        </button>
+        <p className="text-xs text-faint">Shown once. If you lose it, make a new one and disconnect the old one in Settings.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        disabled={pending}
+        className={btnPrimary}
+        onClick={() =>
+          start(async () => {
+            setError(null);
+            try {
+              setAddress(`${origin}/api/ingest/t/${await createTextKey()}`);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Couldn't make an address.");
+            }
+          })
+        }
+      >
+        {pending && <Spinner />}
+        {pending ? "Making…" : "Make my private address"}
+      </button>
+      {error && <span className="text-sm text-alert">{error}</span>}
+    </div>
+  );
+}
+
+export function NameNumber({ handle }: { handle: string }) {
+  const [open, setOpen] = useState(false);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="font-medium text-faint transition-colors hover:text-ink">
+        Name this number
+      </button>
+    );
+  }
+  return (
+    <form
+      className="flex w-full flex-wrap items-center gap-2"
+      action={(formData) =>
+        start(async () => {
+          setError(null);
+          try {
+            await nameTextNumber(handle, String(formData.get("name") ?? ""));
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Couldn't save that.");
+          }
+        })
+      }
+    >
+      <input name="name" required maxLength={80} autoFocus placeholder="Who is this?" className={`${field} max-w-[14rem] py-2 text-sm`} />
+      <button type="submit" disabled={pending} className="inline-flex items-center gap-1.5 font-medium text-ink disabled:opacity-60">
+        {pending && <Spinner className="h-3 w-3" />}
+        Save
+      </button>
+      <button type="button" onClick={() => setOpen(false)} className="text-faint hover:text-ink">
+        Cancel
+      </button>
+      {error && <span className="text-alert">{error}</span>}
+    </form>
   );
 }

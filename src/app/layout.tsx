@@ -17,7 +17,7 @@ const instrument = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Tapd In",
   description:
-    "A weekly briefing from the email you choose: sorted by topic, with who said what and what is waiting on you.",
+    "A weekly briefing from your Outlook email and the texts you choose, sorted by topic, with who said what and what is waiting on you.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [

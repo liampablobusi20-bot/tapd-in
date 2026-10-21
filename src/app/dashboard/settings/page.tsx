@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureInboxToken } from "@/lib/actions/inbox";
 import { createAdminClient } from "@/lib/supabase/admin";
+import Link from "next/link";
 import { btnPrimary, eyebrow } from "@/components/ui";
 import { CategoryForm, CopyAddress, NameForm, RemoveButton } from "../inbox-forms";
 import { ContactForm, KeyMaker, RemoveItem } from "../texts-forms";
@@ -138,9 +139,17 @@ export default async function SettingsPage({
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Text messages</h2>
         <p className="mt-1.5 max-w-lg text-muted">
-          Choose the people whose texts count as business. Only texts from these people are ever read.
-          Everyone else&apos;s stay on your phone and Mac.
+          Include the texts that matter. You choose the people on your iPhone, and only their texts are ever sent. Everyone
+          else&apos;s stay on your phone.
         </p>
+        <div className={card}>
+          <Link href="/dashboard/settings/phone" className={btnPrimary}>
+            Set up texts on your iPhone
+          </Link>
+        </div>
+
+        <details className="mt-6">
+          <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Advanced: use a Mac instead</summary>
         <div className={card}>
           <ul className="divide-y divide-line">
             {contacts?.map((contact) => (
@@ -188,6 +197,7 @@ export default async function SettingsPage({
             <KeyMaker />
           </div>
         </div>
+        </details>
       </section>
 
       <section className="mt-14">
