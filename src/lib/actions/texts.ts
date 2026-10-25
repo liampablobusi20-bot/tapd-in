@@ -128,7 +128,7 @@ export async function nameTextNumber(handleRaw: string, nameRaw: string) {
   if (!handle || !name) throw new Error("Add a name.");
 
   const { error } = await supabase
-    .from("inbox_text_names")
+    .from("inbox_text_contacts")
     .upsert({ owner_id: user.id, handle, name }, { onConflict: "owner_id,handle" });
   if (error) throw new Error(error.message);
 
@@ -138,5 +138,39 @@ export async function nameTextNumber(handleRaw: string, nameRaw: string) {
     .eq("owner_id", user.id)
     .eq("source", "sms")
     .eq("sender_address", handle);
+  revalidatePath("/dashboard");
+}
+
+export async function setTextSuggestions(on: boolean) {
+  const { supabase, user } = await requireInboxOwner();
+  const { error } = await supabase.from("users").update({ text_suggestions: on }).eq("id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard");
+}
+
+// Add: the number joins the list under a name. Ignore: it stops being suggested.
+export async function resolveSuggestion(id: string, action: "add" | "ignore", name?: string) {
+  const { supabase, user } = await requireInboxOwner();
+  const { data: suggestion } = await supabase
+    .from("inbox_text_suggestions")
+    .select("id, handle")
+    .eq("id", id)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  if (!suggestion) throw new Error("Not found.");
+
+  if (action === "add") {
+    const clean = (name ?? "").trim().slice(0, 80);
+    if (!clean) throw new Error("Add a name.");
+    const { error } = await supabase
+      .from("inbox_text_contacts")
+      .upsert({ owner_id: user.id, handle: suggestion.handle, name: clean }, { onConflict: "owner_id,handle" });
+    if (error) throw new Error(error.message);
+    await supabase.from("inbox_text_suggestions").delete().eq("id", id).eq("owner_id", user.id);
+  } else {
+    await supabase.from("inbox_text_suggestions").update({ status: "ignored" }).eq("id", id).eq("owner_id", user.id);
+  }
+  revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
 }

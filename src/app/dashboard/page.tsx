@@ -75,7 +75,7 @@ export default async function BriefingPage() {
   if (!user) redirect("/login");
 
   const since = sevenDaysAgo();
-  const [{ data: profile }, { data: categories }, { data: rows }] = await Promise.all([
+  const [{ data: profile }, { data: categories }, { data: rows }, { count: waiting }] = await Promise.all([
     supabase.from("users").select("display_name").eq("id", user.id).single(),
     supabase.from("inbox_categories").select("id, name").order("sort_order", { ascending: true }),
     supabase
@@ -85,6 +85,7 @@ export default async function BriefingPage() {
       .gte("received_at", since)
       .order("received_at", { ascending: false })
       .limit(200),
+    supabase.from("inbox_text_suggestions").select("id", { count: "exact", head: true }).eq("status", "new"),
   ]);
 
   const messages = (rows ?? []) as Message[];
@@ -115,6 +116,15 @@ export default async function BriefingPage() {
         </div>
         <TestDigestButton />
       </div>
+
+      {(waiting ?? 0) > 0 && (
+        <Link
+          href="/dashboard/settings"
+          className="mt-6 block rounded-2xl bg-accent-soft px-5 py-3 text-sm font-medium text-accent"
+        >
+          {waiting} new {waiting === 1 ? "number" : "numbers"} texted you. Review and add them →
+        </Link>
+      )}
 
       {shown.length > 0 && (
         <p className="mt-6 text-muted">

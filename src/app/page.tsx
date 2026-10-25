@@ -97,9 +97,9 @@ export default async function Home() {
             <Link href="/signup" className={`${btnPrimary} px-7 py-3.5 text-[15px]`}>
               Request access
             </Link>
-            <a href="#example" className={`${btnSecondary} px-7 py-3.5 text-[15px]`}>
-              See an example
-            </a>
+            <Link href="/demo" className={`${btnSecondary} px-7 py-3.5 text-[15px]`}>
+              See a sample briefing
+            </Link>
           </div>
         </section>
 
@@ -193,6 +193,9 @@ export default async function Home() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 text-sm text-muted">
           <span>&copy; 2026 Tapd In</span>
           <div className="flex gap-6">
+            <Link href="/guide" className="transition-colors hover:text-ink">
+              Setup guide
+            </Link>
             <a href="/privacy" className="transition-colors hover:text-ink">
               Privacy Policy
             </a>

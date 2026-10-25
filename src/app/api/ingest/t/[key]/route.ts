@@ -61,16 +61,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ key
   // optional "number" field, or the sender itself when it is a number. A plain
   // name is kept as the name.
   const handle = normalizeHandle(number) ?? (/[a-z]/i.test(from) ? null : normalizeHandle(from));
-  // A number the owner has already named shows that name.
+  // The people the owner has chosen. A number on the list shows its saved name.
   let senderName = from || null;
+  let onList = false;
   if (handle) {
-    const { data: named } = await supabase
-      .from("inbox_text_names")
+    const { data: person } = await supabase
+      .from("inbox_text_contacts")
       .select("name")
       .eq("owner_id", auth.ownerId)
       .eq("handle", handle)
       .maybeSingle();
-    if (named?.name) senderName = named.name;
+    if (person?.name) {
+      senderName = person.name;
+      onList = true;
+    }
+  }
+  // The newer shortcut checks the list on the phone first (?v=2). This is a second
+  // check: anyone not on the list is dropped here and nothing is stored.
+  if (new URL(request.url).searchParams.get("v") === "2" && !onList) {
+    return NextResponse.json({ ok: true, stored: false });
   }
   await ingestMessage(auth.ownerId, `sms-${id}`, {
     source: "sms",

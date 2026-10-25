@@ -8,6 +8,25 @@ const nextConfig: NextConfig = {
   // segment-by-segment, not as a real CIDR range — covers the common
   // home-router ranges.
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
+  // The iPhone shortcut is a signed file; this lets Safari offer to add it.
+  async headers() {
+    return [
+      {
+        source: "/TapdIn-debug.shortcut",
+        headers: [
+          { key: "Content-Type", value: "application/vnd.apple.shortcut" },
+          { key: "Content-Disposition", value: 'inline; filename="TapdIn-debug.shortcut"' },
+        ],
+      },
+      {
+        source: "/TapdIn.shortcut",
+        headers: [
+          { key: "Content-Type", value: "application/vnd.apple.shortcut" },
+          { key: "Content-Disposition", value: 'inline; filename="TapdIn.shortcut"' },
+        ],
+      },
+    ];
+  },
   // The legal pages are plain HTML files in /public, served at clean URLs.
   async rewrites() {
     return [

@@ -92,3 +92,17 @@ export function formatPhone(handle: string): string {
 export function isNumberLabel(label: string | null | undefined): boolean {
   return !label || !/[a-z]/i.test(label);
 }
+
+// How a stored number looks as text on an iPhone: +1 and digits, no spaces. The
+// phone compares this against the sender it sees.
+export function e164(handle: string): string {
+  if (handle.includes("@")) return handle;
+  const digits = handle.replace(/\D/g, "");
+  return digits.length === 10 ? `+1${digits}` : `+${digits}`;
+}
+
+// What the phone downloads: first whether suggestions are on, then the people
+// whose texts may be sent, one per line. Nothing else.
+export function listBody(suggest: boolean, handles: string[]): string {
+  return [`suggest:${suggest ? "on" : "off"}`, ...handles.map(e164)].join("\n");
+}

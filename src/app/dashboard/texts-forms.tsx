@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { addTextContact, createTextKey, removeTextContact, revokeTextKey, summarizeConversation, nameTextNumber } from "@/lib/actions/texts";
+import { addTextContact, createTextKey, removeTextContact, revokeTextKey, summarizeConversation, nameTextNumber, setTextSuggestions, resolveSuggestion } from "@/lib/actions/texts";
 import { disconnectEmail } from "@/lib/actions/connections";
 import { PendingButton, Spinner } from "@/components/pending-button";
 import { btnPrimary, btnSecondary, field } from "@/components/ui";
@@ -272,5 +272,75 @@ export function NameNumber({ handle }: { handle: string }) {
       </button>
       {error && <span className="text-alert">{error}</span>}
     </form>
+  );
+}
+
+export function SuggestionsToggle({ on }: { on: boolean }) {
+  const [pending, start] = useTransition();
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={pending}
+      onClick={() => start(async () => setTextSuggestions(!on))}
+      className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors disabled:opacity-60 ${on ? "bg-accent" : "bg-line"}`}
+    >
+      <span className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-card shadow transition-transform ${on ? "translate-x-5" : ""}`} />
+    </button>
+  );
+}
+
+export function SuggestionRow({ id, label }: { id: string; label: string }) {
+  const [adding, setAdding] = useState(false);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <li className="py-4 first:pt-0 last:pb-0">
+      <div className="flex items-center justify-between gap-4">
+        <p className="font-medium">{label}</p>
+        {!adding && (
+          <div className="flex items-center gap-4 text-sm">
+            <button type="button" onClick={() => setAdding(true)} className="font-medium text-ink underline underline-offset-4">
+              Add
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => start(async () => resolveSuggestion(id, "ignore"))}
+              className="text-faint transition-colors hover:text-ink disabled:opacity-50"
+            >
+              Ignore
+            </button>
+          </div>
+        )}
+      </div>
+      {adding && (
+        <form
+          className="mt-3 flex flex-wrap items-center gap-2"
+          action={(formData) =>
+            start(async () => {
+              setError(null);
+              try {
+                await resolveSuggestion(id, "add", String(formData.get("name") ?? ""));
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Couldn't add that.");
+              }
+            })
+          }
+        >
+          <input name="name" required autoFocus maxLength={80} placeholder="Who is this?" className={`${field} max-w-[14rem] py-2 text-sm`} />
+          <button type="submit" disabled={pending} className="inline-flex items-center gap-1.5 text-sm font-medium text-ink disabled:opacity-60">
+            {pending && <Spinner className="h-3 w-3" />}
+            Save
+          </button>
+          <button type="button" onClick={() => setAdding(false)} className="text-sm text-faint hover:text-ink">
+            Cancel
+          </button>
+          {error && <span className="text-sm text-alert">{error}</span>}
+        </form>
+      )}
+    </li>
   );
 }

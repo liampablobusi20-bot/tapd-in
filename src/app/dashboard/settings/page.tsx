@@ -5,7 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { btnPrimary, eyebrow } from "@/components/ui";
 import { CategoryForm, CopyAddress, NameForm, RemoveButton } from "../inbox-forms";
-import { ContactForm, KeyMaker, RemoveItem } from "../texts-forms";
+import { ContactForm, KeyMaker, RemoveItem, SuggestionRow, SuggestionsToggle } from "../texts-forms";
+import { formatPhone } from "@/lib/inbox/texts";
 
 const CONNECT_ERRORS: Record<string, string> = {
   "needs-admin":
@@ -43,8 +44,8 @@ export default async function SettingsPage({
     .eq("owner_id", user.id)
     .order("created_at", { ascending: true });
 
-  const [{ data: profile }, { data: categories }, { data: contacts }, { data: keys }] = await Promise.all([
-    supabase.from("users").select("display_name").eq("id", user.id).single(),
+  const [{ data: profile }, { data: categories }, { data: contacts }, { data: keys }, { data: suggestions }] = await Promise.all([
+    supabase.from("users").select("display_name, text_suggestions").eq("id", user.id).single(),
     supabase.from("inbox_categories").select("id, name, description").order("sort_order", { ascending: true }),
     supabase.from("inbox_text_contacts").select("id, name, handle").order("name", { ascending: true }),
     supabase
@@ -52,6 +53,12 @@ export default async function SettingsPage({
       .select("id, key_prefix, created_at, last_used_at")
       .is("revoked_at", null)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("inbox_text_suggestions")
+      .select("id, handle, seen_count")
+      .eq("status", "new")
+      .order("last_seen", { ascending: false })
+      .limit(50),
   ]);
 
   const card = "mt-5 rounded-3xl border border-line bg-card p-7 sm:p-8";
@@ -60,6 +67,13 @@ export default async function SettingsPage({
     <div className="mx-auto max-w-3xl px-6 py-14 sm:py-20">
       <p className={eyebrow}>Settings</p>
       <h1 className="mt-4 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">Your inbox</h1>
+      <p className="mt-4 text-sm text-muted">
+        New here?{" "}
+        <Link href="/guide" className="font-medium text-ink underline underline-offset-4">
+          Read the step-by-step setup guide
+        </Link>
+        .
+      </p>
 
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Connect your email</h2>
@@ -139,9 +153,58 @@ export default async function SettingsPage({
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Text messages</h2>
         <p className="mt-1.5 max-w-lg text-muted">
-          Include the texts that matter. You choose the people on your iPhone, and only their texts are ever sent. Everyone
-          else&apos;s stay on your phone.
+          Choose the people whose texts count as business on your iPhone. Only their texts are ever sent. Everyone else&apos;s stay on your
+          phone. Add their names here so they show up by name.
         </p>
+
+        <div className={card}>
+          <p className="font-medium">People whose texts count</p>
+          <ul className="mt-4 divide-y divide-line">
+            {contacts?.map((contact) => (
+              <li key={contact.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                <div className="min-w-0">
+                  <p className="font-medium">{contact.name}</p>
+                  <p className="mt-0.5 text-sm text-muted">{formatPhone(contact.handle)}</p>
+                </div>
+                <RemoveItem id={contact.id} kind="contact" label="Remove" />
+              </li>
+            ))}
+            {contacts?.length === 0 && (
+              <li className="text-sm text-muted">No one yet. Nothing is sent until you add someone.</li>
+            )}
+          </ul>
+          <ContactForm />
+        </div>
+
+        {profile?.text_suggestions && (
+        <div className={card}>
+          <div className="flex items-start justify-between gap-5">
+            <div>
+              <p className="font-medium">Suggest new numbers</p>
+              <p className="mt-1 max-w-md text-sm leading-relaxed text-muted">
+                Off by default. When it&apos;s on, your phone tells Tapd In the phone number, never the message, of anyone not on your
+                list who texts you, so you can tap Add or Ignore. That means Tapd In will see the numbers of people who text you,
+                including friends and family, though never what they say.
+              </p>
+            </div>
+            <SuggestionsToggle on={Boolean(profile?.text_suggestions)} />
+          </div>
+          {profile?.text_suggestions && (
+            <div className="mt-5 border-t border-line pt-5">
+              {suggestions && suggestions.length > 0 ? (
+                <ul className="divide-y divide-line">
+                  {suggestions.map((item) => (
+                    <SuggestionRow key={item.id} id={item.id} label={formatPhone(item.handle)} />
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted">No new numbers yet. They&apos;ll appear here when someone not on your list texts you.</p>
+              )}
+            </div>
+          )}
+        </div>
+        )}
+
         <div className={card}>
           <Link href="/dashboard/settings/phone" className={btnPrimary}>
             Set up texts on your iPhone
@@ -150,24 +213,6 @@ export default async function SettingsPage({
 
         <details className="mt-6">
           <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Advanced: use a Mac instead</summary>
-        <div className={card}>
-          <ul className="divide-y divide-line">
-            {contacts?.map((contact) => (
-              <li key={contact.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
-                <div className="min-w-0">
-                  <p className="font-medium">{contact.name}</p>
-                  <p className="mt-0.5 text-sm text-muted">{contact.handle}</p>
-                </div>
-                <RemoveItem id={contact.id} kind="contact" label="Remove" />
-              </li>
-            ))}
-            {contacts?.length === 0 && (
-              <li className="text-sm text-muted">No one yet. Nothing is read until you add someone.</li>
-            )}
-          </ul>
-          <ContactForm />
-        </div>
-
         <div className={card}>
           <p className="font-medium">Your Mac</p>
           <p className="mt-1 max-w-md text-sm leading-relaxed text-muted">
