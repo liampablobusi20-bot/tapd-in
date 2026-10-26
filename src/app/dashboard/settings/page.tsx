@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ensureInboxToken } from "@/lib/actions/inbox";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
-import { btnPrimary, eyebrow } from "@/components/ui";
+import { btnPrimary, btnSecondary, eyebrow } from "@/components/ui";
 import { CategoryForm, CopyAddress, NameForm, RemoveButton } from "../inbox-forms";
 import { ContactForm, KeyMaker, RemoveItem, SuggestionRow, SuggestionsToggle } from "../texts-forms";
 import { formatPhone } from "@/lib/inbox/texts";
@@ -40,7 +40,7 @@ export default async function SettingsPage({
   // Tokens live in this table, so it is read only on the server and only these columns.
   const { data: connections } = await createAdminClient()
     .from("inbox_connections")
-    .select("id, account_email, status, last_synced_at")
+    .select("id, account_email, status, last_synced_at, calendar_enabled")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: true });
 
@@ -83,7 +83,9 @@ export default async function SettingsPage({
         </p>
         {connected && (
           <p className="mt-5 rounded-2xl bg-accent-soft px-5 py-3 text-sm text-accent">
-            Connected. Your recent mail will appear in your briefing within a few minutes.
+            {connected === "calendar"
+              ? "Meeting briefs are on. Your next meetings will show at the top of your briefing."
+              : "Connected. Your recent mail will appear in your briefing within a few minutes."}
           </p>
         )}
         {connect_error && (
@@ -134,6 +136,38 @@ export default async function SettingsPage({
           </a>
         </div>
       </section>
+
+      {connections && connections.some((c) => c.status === "active") && (
+        <section className="mt-14">
+          <h2 className="text-lg font-semibold tracking-tight">Meeting briefs</h2>
+          <p className="mt-1.5 max-w-lg text-muted">
+            Optional. Before a meeting, your briefing shows what you know about the people coming: what you owe them, what they owe you,
+            and the latest from them. It needs one more permission, to read your calendar. Tapd In only reads the title, time, and
+            attendees of the next day or so, never notes or attachments, and stores none of it.
+          </p>
+          <div className={card}>
+            {connections.some((c) => c.calendar_enabled) ? (
+              <ul className="divide-y divide-line">
+                {connections
+                  .filter((c) => c.calendar_enabled)
+                  .map((c) => (
+                    <li key={c.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                      <div className="text-sm">
+                        <p className="font-medium">{c.account_email}</p>
+                        <p className="text-xs text-faint">Meeting briefs are on</p>
+                      </div>
+                      <RemoveItem id={c.id} kind="calendar" label="Turn off" />
+                    </li>
+                  ))}
+              </ul>
+            ) : (
+              <a href="/api/connect/microsoft/start?feature=calendar" className={btnSecondary}>
+                Turn on meeting briefs
+              </a>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Or forward your email</h2>

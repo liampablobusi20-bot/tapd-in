@@ -1,7 +1,17 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { ingestMessage } from "@/lib/inbox/process";
-import { MicrosoftAuthError, fetchInboxSince, fetchSentSince, refreshTokens, toIncoming } from "@/lib/inbox/microsoft";
+import {
+  CALENDAR_SCOPES,
+  CalendarAccessError,
+  MicrosoftAuthError,
+  fetchInboxSince,
+  fetchSentSince,
+  fetchUpcomingEvents,
+  refreshTokens,
+  toIncoming,
+  type CalendarEvent,
+} from "@/lib/inbox/microsoft";
 
 export function microsoftCreds() {
   const clientId = process.env.MICROSOFT_CLIENT_ID;
@@ -124,4 +134,42 @@ export async function syncOwnerMicrosoft(ownerId: string): Promise<number> {
     }
   }
   return total;
+}
+
+// Upcoming meetings from the calendars the owner switched on. Nothing is stored:
+// the events are read when the briefing opens and used only to build that page.
+// Any failure just means no meetings are shown.
+export async function upcomingMeetings(ownerId: string, hours = 36): Promise<{ events: CalendarEvent[]; ownAddresses: string[] }> {
+  const creds = microsoftCreds();
+  const none = { events: [], ownAddresses: [] };
+  if (!creds) return none;
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("inbox_connections")
+    .select("id, account_email, refresh_token_enc")
+    .eq("owner_id", ownerId)
+    .eq("provider", "microsoft")
+    .eq("status", "active")
+    .eq("calendar_enabled", true);
+
+  const events: CalendarEvent[] = [];
+  const ownAddresses: string[] = [];
+  const from = new Date();
+  const to = new Date(from.getTime() + hours * 3_600_000);
+  for (const conn of data ?? []) {
+    try {
+      const tokens = await refreshTokens(decryptSecret(conn.refresh_token_enc), creds, fetch, Date.now(), CALENDAR_SCOPES);
+      await supabase.from("inbox_connections").update({ refresh_token_enc: encryptSecret(tokens.refreshToken) }).eq("id", conn.id);
+      events.push(...(await fetchUpcomingEvents(tokens.accessToken, from.toISOString(), to.toISOString())));
+      ownAddresses.push(conn.account_email);
+    } catch (err) {
+      if (err instanceof MicrosoftAuthError || (err instanceof CalendarAccessError && (err.status === 401 || err.status === 403))) {
+        // The sign-in no longer covers the calendar. Mail still works, so only the briefs switch off.
+        await supabase.from("inbox_connections").update({ calendar_enabled: false }).eq("id", conn.id);
+      } else {
+        console.error("Reading the calendar failed:", err instanceof Error ? err.message : "unknown error");
+      }
+    }
+  }
+  return { events, ownAddresses };
 }

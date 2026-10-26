@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { addTextContact, createTextKey, removeTextContact, revokeTextKey, summarizeConversation, nameTextNumber, setTextSuggestions, resolveSuggestion } from "@/lib/actions/texts";
 import { catchMeUp } from "@/lib/actions/people";
-import { disconnectEmail } from "@/lib/actions/connections";
+import { disableMeetingBriefs, disconnectEmail } from "@/lib/actions/connections";
 import { PendingButton, Spinner } from "@/components/pending-button";
 import { btnPrimary, btnSecondary, field } from "@/components/ui";
 
@@ -36,7 +36,7 @@ export function ContactForm() {
   );
 }
 
-export function RemoveItem({ id, kind, label }: { id: string; kind: "contact" | "key" | "connection"; label: string }) {
+export function RemoveItem({ id, kind, label }: { id: string; kind: "contact" | "key" | "connection" | "calendar"; label: string }) {
   const [pending, start] = useTransition();
   return (
     <button
@@ -46,6 +46,7 @@ export function RemoveItem({ id, kind, label }: { id: string; kind: "contact" | 
         start(async () => {
           if (kind === "contact") await removeTextContact(id);
           else if (kind === "key") await revokeTextKey(id);
+          else if (kind === "calendar") await disableMeetingBriefs(id);
           else await disconnectEmail(id);
         })
       }

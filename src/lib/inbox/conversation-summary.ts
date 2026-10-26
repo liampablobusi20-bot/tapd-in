@@ -21,7 +21,8 @@ export async function summarizeConversationNotes(
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 300,
+      max_tokens: 1500,
+      output_config: { effort: "low" },
       system: CONVERSATION_SYSTEM,
       messages: [{ role: "user", content: buildConversationUser(person, notes) }],
     });
@@ -52,7 +53,8 @@ export async function summarizePersonNotes(
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 300,
+      max_tokens: 1500,
+      output_config: { effort: "low" },
       system: PERSON_SYSTEM,
       messages: [{ role: "user", content: buildConversationUser(person, notes) }],
     });

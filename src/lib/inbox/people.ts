@@ -11,6 +11,10 @@ export type PersonMessage = {
   needs_reply?: boolean | null;
   resolved_at?: string | null;
   answered_at?: string | null;
+  subject?: string | null;
+  promise?: string | null;
+  promise_due?: string | null;
+  promise_resolved_at?: string | null;
 };
 
 // A name written the same way in email and in a text is the same person. A

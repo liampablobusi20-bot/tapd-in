@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { composeDigest } from "@/lib/inbox/digest";
+import { owedState, phoenixToday, worthSurfacing } from "@/lib/inbox/owed";
 
 // Sends one owner's update for a window. With a weekKey it is sent at most once
 // per week (the claim is taken before sending and released if sending fails).
@@ -34,7 +35,7 @@ export async function sendDigest(
     return "failed";
   }
 
-  const [{ data: categories }, { data: messages }, { data: owed }] = await Promise.all([
+  const [{ data: categories }, { data: messages }, { data: owed }, { data: promised }] = await Promise.all([
     supabase
       .from("inbox_categories")
       .select("id, name, sort_order")
@@ -62,7 +63,24 @@ export async function sendDigest(
       .lt("received_at", window.endIso)
       .order("received_at", { ascending: true })
       .limit(30),
+    // What others promised, still open.
+    supabase
+      .from("inbox_messages")
+      .select("sender_name, sender_address, promise, promise_due")
+      .eq("owner_id", ownerId)
+      .eq("status", "processed")
+      .not("promise", "is", null)
+      .is("promise_resolved_at", null)
+      .gte("received_at", new Date(Date.parse(window.endIso) - 30 * 86_400_000).toISOString())
+      .lt("received_at", window.endIso)
+      .limit(100),
   ]);
+  const asOfDay = phoenixToday(Date.parse(window.endIso));
+  const dueSoon = (promised ?? []).flatMap((p) => {
+    if (!p.promise) return [];
+    const state = owedState(p.promise_due, asOfDay);
+    return worthSurfacing(state) ? [{ ...p, promise: p.promise }] : [];
+  });
 
   const site = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   const digest = composeDigest({
@@ -74,6 +92,7 @@ export async function sendDigest(
     waiting: (owed ?? []).flatMap((m) =>
       m.summary && m.importance ? [{ ...m, summary: m.summary, importance: m.importance }] : []
     ),
+    owed: dueSoon,
     weekStart: window.startIso,
     weekEnd: window.endIso,
     appUrl: site ? `${site}/dashboard` : undefined,

@@ -9,16 +9,28 @@ const AUTH = "https://login.microsoftonline.com/common/oauth2/v2.0";
 const GRAPH = "https://graph.microsoft.com/v1.0";
 // Read-only access to mail, plus the refresh token that keeps it working.
 export const SCOPES = "offline_access User.Read Mail.Read";
+// Optional, only when the owner turns on meeting briefs: read-only access to the calendar.
+export const CALENDAR_SCOPES = `${SCOPES} Calendars.Read`;
 
 type FetchFn = typeof fetch;
 
-export function authorizeUrl({ clientId, redirectUri, state }: { clientId: string; redirectUri: string; state: string }) {
+export function authorizeUrl({
+  clientId,
+  redirectUri,
+  state,
+  scope = SCOPES,
+}: {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+  scope?: string;
+}) {
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
     redirect_uri: redirectUri,
     response_mode: "query",
-    scope: SCOPES,
+    scope,
     state,
     prompt: "select_account",
   });
@@ -53,17 +65,24 @@ export class MicrosoftAuthError extends Error {}
 
 type Creds = { clientId: string; clientSecret: string };
 
-export function exchangeCode(code: string, redirectUri: string, creds: Creds, fetchFn: FetchFn = fetch, nowMs = Date.now()) {
+export function exchangeCode(
+  code: string,
+  redirectUri: string,
+  creds: Creds,
+  fetchFn: FetchFn = fetch,
+  nowMs = Date.now(),
+  scope = SCOPES
+) {
   return tokenRequest(
-    { client_id: creds.clientId, client_secret: creds.clientSecret, grant_type: "authorization_code", code, redirect_uri: redirectUri, scope: SCOPES },
+    { client_id: creds.clientId, client_secret: creds.clientSecret, grant_type: "authorization_code", code, redirect_uri: redirectUri, scope },
     fetchFn,
     nowMs
   );
 }
 
-export function refreshTokens(refreshToken: string, creds: Creds, fetchFn: FetchFn = fetch, nowMs = Date.now()) {
+export function refreshTokens(refreshToken: string, creds: Creds, fetchFn: FetchFn = fetch, nowMs = Date.now(), scope = SCOPES) {
   return tokenRequest(
-    { client_id: creds.clientId, client_secret: creds.clientSecret, grant_type: "refresh_token", refresh_token: refreshToken, scope: SCOPES },
+    { client_id: creds.clientId, client_secret: creds.clientSecret, grant_type: "refresh_token", refresh_token: refreshToken, scope },
     fetchFn,
     nowMs
   );
@@ -160,4 +179,68 @@ export async function fetchSentSince(
     url = data["@odata.nextLink"] ?? null;
   }
   return sent;
+}
+
+export type CalendarEvent = {
+  id: string;
+  subject: string;
+  startIso: string;
+  endIso: string;
+  attendees: { name: string | null; address: string }[];
+};
+
+// Upcoming events in a window, with who is invited. Cancelled and all-day events are
+// left out. Nothing here is stored: it is read when the briefing is opened.
+export async function fetchUpcomingEvents(
+  accessToken: string,
+  fromIso: string,
+  toIso: string,
+  fetchFn: FetchFn = fetch
+): Promise<CalendarEvent[]> {
+  const params = new URLSearchParams({
+    startDateTime: fromIso,
+    endDateTime: toIso,
+    $select: "id,subject,start,end,attendees,isCancelled,isAllDay",
+    $orderby: "start/dateTime",
+    $top: "25",
+  });
+  const response = await fetchFn(`${GRAPH}/me/calendarView?${params}`, {
+    headers: { Authorization: `Bearer ${accessToken}`, Prefer: 'outlook.timezone="UTC"' },
+  });
+  if (!response.ok) throw new CalendarAccessError(response.status);
+  const data = (await response.json()) as {
+    value?: {
+      id: string;
+      subject?: string | null;
+      start?: { dateTime?: string };
+      end?: { dateTime?: string };
+      isCancelled?: boolean;
+      isAllDay?: boolean;
+      attendees?: { emailAddress?: { name?: string | null; address?: string | null } }[];
+    }[];
+  };
+  const asUtc = (value?: string) => (value ? (/[zZ]|[+-]\d\d:\d\d$/.test(value) ? value : `${value.slice(0, 19)}Z`) : "");
+  const events: CalendarEvent[] = [];
+  for (const e of data.value ?? []) {
+    if (e.isCancelled || e.isAllDay || !e.start?.dateTime || !e.end?.dateTime) continue;
+    events.push({
+      id: e.id,
+      subject: e.subject?.trim() || "(no title)",
+      startIso: asUtc(e.start.dateTime),
+      endIso: asUtc(e.end.dateTime),
+      attendees: (e.attendees ?? []).flatMap((a) =>
+        a.emailAddress?.address ? [{ name: a.emailAddress.name?.trim() || null, address: a.emailAddress.address.trim().toLowerCase() }] : []
+      ),
+    });
+  }
+  return events;
+}
+
+// Microsoft refused: most often the calendar permission hasn't been granted.
+export class CalendarAccessError extends Error {
+  status: number;
+  constructor(status: number) {
+    super(`Calendar returned ${status}`);
+    this.status = status;
+  }
 }

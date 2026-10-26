@@ -104,3 +104,15 @@ export async function resolveWaiting(id: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/dashboard");
 }
+
+// "Got it": the owner has what was promised (or no longer needs it).
+export async function markDelivered(id: string) {
+  const { user } = await requireInboxOwner();
+  const { error } = await createAdminClient()
+    .from("inbox_messages")
+    .update({ promise_resolved_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("owner_id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard");
+}

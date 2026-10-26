@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { logout } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Wordmark, btnSecondary, eyebrow } from "@/components/ui";
+import { NavLinks } from "./nav-links";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -20,19 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-5">
           <Wordmark href="/dashboard" />
           <nav className="flex items-center gap-6 text-sm">
-            {enabled && (
-              <>
-                <Link href="/dashboard" className="text-muted transition-colors hover:text-ink">
-                  Briefing
-                </Link>
-                <Link href="/dashboard/people" className="text-muted transition-colors hover:text-ink">
-                  People
-                </Link>
-                <Link href="/dashboard/settings" className="text-muted transition-colors hover:text-ink">
-                  Settings
-                </Link>
-              </>
-            )}
+            {enabled && <NavLinks />}
             <form action={logout}>
               <button type="submit" className="text-muted transition-colors hover:text-ink">
                 Log out

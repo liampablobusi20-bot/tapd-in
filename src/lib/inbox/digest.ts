@@ -1,6 +1,7 @@
 // Builds the weekly update: messages grouped by category, who said what.
 
 import type { Importance } from "@/lib/inbox/triage";
+import { owedLabel, owedState, phoenixToday } from "@/lib/inbox/owed";
 
 export type DigestCategory = { id: string; name: string; sort_order: number };
 
@@ -15,6 +16,14 @@ export type DigestMessage = {
 };
 
 const PER_CATEGORY = 12;
+
+// Something someone promised the reader that is late or due soon.
+export type DigestOwed = {
+  sender_name: string | null;
+  sender_address: string | null;
+  promise: string;
+  promise_due: string | null;
+};
 
 function who(message: DigestMessage): string {
   return message.sender_name?.trim() || message.sender_address?.trim() || "Someone";
@@ -41,6 +50,7 @@ export function composeDigest({
   timeZone = "America/Phoenix",
   appUrl,
   waiting = [],
+  owed = [],
 }: {
   name: string | null;
   categories: DigestCategory[];
@@ -51,6 +61,8 @@ export function composeDigest({
   appUrl?: string;
   // Things someone is waiting on the reader for, which can be older than the week.
   waiting?: DigestMessage[];
+  // Promises made to the reader that are late or due soon.
+  owed?: DigestOwed[];
 }): { subject: string; text: string } {
   const waitingIds = new Set(waiting.map((m) => m.id).filter(Boolean));
   // Low-importance chatter stays out of the update; it's still in the app. Anything
@@ -80,6 +92,19 @@ export function composeDigest({
     lines.push("");
   }
 
+  if (owed.length) {
+    // Measured from the day the email is read (the day the new week starts), so it
+    // agrees with what the briefing shows.
+    const asOf = phoenixToday(new Date(weekEnd).getTime());
+    lines.push("OWED TO YOU");
+    for (const o of [...owed].sort((a, b) => (a.promise_due ?? "").localeCompare(b.promise_due ?? ""))) {
+      const state = owedState(o.promise_due, asOf);
+      const label = owedLabel(state, o.promise_due).toLowerCase();
+      lines.push(`• ${o.sender_name?.trim() || o.sender_address?.trim() || "Someone"} (${label}): said they'd ${o.promise}`);
+    }
+    lines.push("");
+  }
+
   const ordered = [...categories].sort((a, b) => a.sort_order - b.sort_order);
   const sections: { title: string; items: DigestMessage[] }[] = ordered.map((c) => ({
     title: c.name,
@@ -105,7 +130,7 @@ export function composeDigest({
     lines.push("");
   }
 
-  if (!kept.length && !waiting.length) {
+  if (!kept.length && !waiting.length && !owed.length) {
     lines.push("Nothing important came through this week.");
     lines.push("");
   }

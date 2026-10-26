@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireInboxOwner } from "@/lib/inbox/require-owner";
 import { encryptSecret, verifyState } from "@/lib/crypto";
-import { exchangeCode, fetchAccountEmail } from "@/lib/inbox/microsoft";
+import { CALENDAR_SCOPES, SCOPES, exchangeCode, fetchAccountEmail } from "@/lib/inbox/microsoft";
 import { microsoftCreds } from "@/lib/inbox/microsoft-sync";
 
 const BACKFILL_MS = 3 * 86_400_000;
@@ -11,6 +11,7 @@ const BACKFILL_MS = 3 * 86_400_000;
 function back(request: Request, query: string) {
   const response = NextResponse.redirect(new URL(`/dashboard/settings?${query}`, request.url));
   response.cookies.delete({ name: "ms_oauth_state", path: "/api/connect/microsoft" });
+  response.cookies.delete({ name: "ms_oauth_feature", path: "/api/connect/microsoft" });
   return response;
 }
 
@@ -45,7 +46,9 @@ export async function GET(request: Request) {
 
   const state = params.get("state") ?? "";
   const code = params.get("code");
-  const saved = (await cookies()).get("ms_oauth_state")?.value;
+  const jar = await cookies();
+  const saved = jar.get("ms_oauth_state")?.value;
+  const calendar = jar.get("ms_oauth_feature")?.value === "calendar";
   if (!code || !state || state !== saved || verifyState(state) !== user.id) {
     return back(request, "connect_error=failed");
   }
@@ -54,7 +57,7 @@ export async function GET(request: Request) {
   if (!creds) return back(request, "connect_error=not-configured");
 
   try {
-    const tokens = await exchangeCode(code, `${new URL(request.url).origin}/api/connect/microsoft/callback`, creds);
+    const tokens = await exchangeCode(code, `${new URL(request.url).origin}/api/connect/microsoft/callback`, creds, fetch, Date.now(), calendar ? CALENDAR_SCOPES : SCOPES);
     const email = await fetchAccountEmail(tokens.accessToken);
     if (!email) return back(request, "connect_error=failed");
 
@@ -71,7 +74,7 @@ export async function GET(request: Request) {
     if (existing) {
       await supabase
         .from("inbox_connections")
-        .update({ refresh_token_enc: encrypted, status: "active" })
+        .update({ refresh_token_enc: encrypted, status: "active", calendar_enabled: calendar })
         .eq("id", existing.id);
     } else {
       // Start a few days back so the first briefing has something in it.
@@ -81,9 +84,10 @@ export async function GET(request: Request) {
         account_email: email,
         refresh_token_enc: encrypted,
         synced_through: new Date(Date.now() - BACKFILL_MS).toISOString(),
+        calendar_enabled: calendar,
       });
     }
-    return back(request, "connected=microsoft");
+    return back(request, calendar ? "connected=calendar" : "connected=microsoft");
   } catch {
     return back(request, "connect_error=failed");
   }

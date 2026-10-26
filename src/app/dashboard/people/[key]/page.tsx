@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { eyebrow } from "@/components/ui";
 import { formatPhone, replyLink } from "@/lib/inbox/texts";
 import { messagesFor, isWaiting, groupPeople, type PersonMessage } from "@/lib/inbox/people";
-import { DoneButton } from "../../inbox-forms";
+import { DoneButton, GotItButton } from "../../inbox-forms";
+import { nudgeLink, owedLabel, owedState, phoenixToday } from "@/lib/inbox/owed";
 import { CatchMeUpButton } from "../../texts-forms";
 
 const ninetyDaysAgo = () => new Date(Date.now() - 90 * 86_400_000).toISOString();
@@ -29,7 +30,7 @@ export default async function PersonPage({ params }: { params: Promise<{ key: st
 
   const { data } = await supabase
     .from("inbox_messages")
-    .select("id, source, sender_name, sender_address, summary, importance, received_at, needs_reply, resolved_at, answered_at")
+    .select("id, source, sender_name, sender_address, subject, summary, importance, received_at, needs_reply, resolved_at, answered_at, promise, promise_due, promise_resolved_at")
     .eq("status", "processed")
     .gte("received_at", ninetyDaysAgo())
     .order("received_at", { ascending: false })
@@ -41,6 +42,8 @@ export default async function PersonPage({ params }: { params: Promise<{ key: st
 
   const person = groupPeople(mine, formatPhone)[0];
   const waiting = mine.filter(isWaiting).reverse();
+  const today = phoenixToday();
+  const owedBy = mine.filter((m) => m.promise && !m.promise_resolved_at).reverse();
   const FIRST = 12;
   const recent = mine.slice(0, FIRST);
   const earlier = mine.slice(FIRST);
@@ -92,6 +95,35 @@ export default async function PersonPage({ params }: { params: Promise<{ key: st
                     {reply && (
                       <a href={reply} className="font-medium transition-colors hover:text-ink">
                         Reply
+                      </a>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {owedBy.length > 0 && (
+        <section className="mt-12">
+          <p className={eyebrow}>They owe you</p>
+          <ul className="mt-5 divide-y divide-line rounded-3xl border border-line bg-card p-7 sm:p-8">
+            {owedBy.map((m) => {
+              const state = owedState(m.promise_due, today);
+              const nudge = nudgeLink(m, m.promise ?? "", m.promise_due, today);
+              return (
+                <li key={m.id} className="py-4 first:pt-0 last:pb-0">
+                  <p className="text-xs text-faint">
+                    <span className={state.state === "late" ? "font-medium text-alert" : ""}>{owedLabel(state, m.promise_due)}</span> ·{" "}
+                    {m.source === "sms" ? "Text" : "Email"}, {dateLabel(m.received_at)}
+                  </p>
+                  <p className="mt-1 text-[15px] leading-relaxed text-muted">Said they&apos;d {m.promise}.</p>
+                  <div className="mt-3 flex items-center gap-5 text-xs text-faint">
+                    <GotItButton id={m.id} />
+                    {nudge && (
+                      <a href={nudge} className="font-medium transition-colors hover:text-ink">
+                        Nudge
                       </a>
                     )}
                   </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { addCategory, deleteCategory, deleteInboxMessage, resolveWaiting, sendTestDigest, updateName } from "@/lib/actions/inbox";
+import { addCategory, deleteCategory, deleteInboxMessage, markDelivered, resolveWaiting, sendTestDigest, updateName } from "@/lib/actions/inbox";
 import { PendingButton, Spinner } from "@/components/pending-button";
 import { btnPrimary, btnSecondary, field } from "@/components/ui";
 
@@ -143,6 +143,21 @@ export function DoneButton({ id }: { id: string }) {
     >
       {pending && <Spinner className="h-3 w-3" />}
       Done
+    </button>
+  );
+}
+
+export function GotItButton({ id }: { id: string }) {
+  const [pending, start] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => start(async () => markDelivered(id))}
+      className="inline-flex items-center gap-1.5 font-medium text-ink transition-opacity hover:opacity-70 disabled:opacity-50"
+    >
+      {pending && <Spinner className="h-3 w-3" />}
+      Got it
     </button>
   );
 }

@@ -24,7 +24,10 @@ export async function triageWithModel(
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 400,
+      // Thinking counts against this limit, so leave plenty of room for the answer
+      // itself, and keep the thinking light. A too-small limit cut some answers off.
+      max_tokens: 2000,
+      output_config: { effort: "low" },
       system: TRIAGE_SYSTEM,
       messages: [{ role: "user", content: buildTriageUser(categories, message) }],
     });
@@ -146,6 +149,8 @@ export async function processPending(limit = BATCH) {
           summary: triage.summary,
           importance: triage.importance,
           needs_reply: triage.needsReply,
+          promise: triage.promise,
+          promise_due: triage.promiseDue,
           input_tokens: usage.inputTokens,
           output_tokens: usage.outputTokens,
           cost_micros: costMicros(usage),

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { btnPrimary, btnSecondary, eyebrow, Wordmark } from "@/components/ui";
-import { composeDigest, type DigestMessage } from "@/lib/inbox/digest";
+import { composeDigest, type DigestMessage, type DigestOwed } from "@/lib/inbox/digest";
+import { owedLabel, owedState } from "@/lib/inbox/owed";
+import { MeetingBriefs } from "@/app/dashboard/meeting-briefs";
+import type { MeetingBrief } from "@/lib/inbox/briefs";
 
 export const metadata: Metadata = {
   title: "See a sample briefing",
@@ -94,8 +97,41 @@ const items: Item[] = [
 ];
 
 const topics = ["Clients", "Team", "Vendors"];
+
+// What others promised. The page and the email both count from the same Monday.
+const owedItems: (DigestOwed & { who: string })[] = [
+  { who: "Harbor Print", sender_name: "Harbor Print", sender_address: null, promise: "send the corrected invoice", promise_due: "2026-10-23" },
+  { who: "Jenna Cole", sender_name: "Jenna Cole", sender_address: null, promise: "send the final hiring plan", promise_due: "2026-10-27" },
+];
 // The page and the sample email both measure waiting from the same moment.
 const DEMO_NOW = Date.parse("2026-10-26T07:00:00Z");
+const meetings: MeetingBrief[] = [
+  {
+    id: "m1",
+    subject: "Contract review",
+    startIso: "2026-10-26T20:00:00Z",
+    endIso: "2026-10-26T21:00:00Z",
+    invited: 3,
+    attendees: [
+      {
+        name: "Dana Ruiz",
+        address: "dana@acme.example",
+        lastAt: "2026-10-23T17:00:00Z",
+        waiting: [{ id: "w1", source: "microsoft", sender_name: "Dana Ruiz", sender_address: "dana@acme.example", summary: "Needs the signed contract by Friday or the 12% discount expires.", importance: "urgent", received_at: "2026-10-23T17:00:00Z" }],
+        owed: [],
+        recent: [{ id: "r1", source: "sms", sender_name: "Dana Ruiz", sender_address: "5205550123", summary: "Asked whether the Thursday walkthrough is still on.", importance: "normal", received_at: "2026-10-21T16:00:00Z" }],
+      },
+      {
+        name: "Marcus Lee",
+        address: "marcus@acme.example",
+        lastAt: "2026-10-22T18:00:00Z",
+        waiting: [],
+        owed: [{ id: "o1", source: "sms", sender_name: "Marcus Lee", sender_address: "5205550188", summary: null, importance: null, received_at: "2026-10-22T18:00:00Z", promise: "send the revised numbers" }],
+        recent: [],
+      },
+    ],
+  },
+];
 const waitingDays = (item: Item) => Math.max(0, Math.floor((DEMO_NOW - Date.parse(item.iso)) / 86_400_000));
 const waiting = items.filter((i) => i.waiting).sort((a, b) => waitingDays(b) - waitingDays(a));
 const urgent = items.filter((i) => i.urgent && !i.waiting);
@@ -117,6 +153,7 @@ const digest = composeDigest({
   categories: topics.map((name, i) => ({ id: name, name, sort_order: i })),
   messages: digestMessages,
   waiting: waiting.map(toDigest),
+  owed: owedItems,
   weekStart: "2026-10-19T07:00:00Z",
   weekEnd: "2026-10-26T07:00:00Z",
 });
@@ -175,7 +212,8 @@ export default function DemoPage() {
         <p className={`${eyebrow} mt-10`}>Last 7 days</p>
         <h1 className="mt-4 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">Ava, here&apos;s your week.</h1>
         <p className="mt-6 text-muted">
-          <span className="font-medium text-accent">{waiting.length} waiting on you</span> · {items.length} messages sorted from Outlook and texts
+          <span className="font-medium text-accent">{waiting.length} waiting on you</span> · <span className="font-medium">{owedItems.length} owed to you</span> ·{" "}
+          {items.length} messages sorted from Outlook and texts
           {urgent.length > 0 && (
             <>
               {" "}
@@ -185,6 +223,12 @@ export default function DemoPage() {
         </p>
 
         <div className="mt-12 flex flex-col gap-12">
+          <div>
+            <MeetingBriefs briefs={meetings} now={DEMO_NOW} linkPeople={false} />
+            <p className="mt-3 text-xs text-faint">
+              Optional. Before a meeting, Tapd In shows what you know about who is coming. Nothing from your calendar is stored.
+            </p>
+          </div>
           <section>
             <p className={`${eyebrow} text-accent`}>Waiting on you</p>
             <ul className={`${card} border-accent/25`}>
@@ -195,6 +239,34 @@ export default function DemoPage() {
             <p className="mt-3 text-xs text-faint">
               Tapd In notices who is waiting on a reply from you. They drop off once you answer in Outlook, or when you tap Done.
             </p>
+          </section>
+          <section>
+            <p className={eyebrow}>Owed to you</p>
+            <ul className={card}>
+              {owedItems.map((o) => {
+                const state = owedState(o.promise_due, "2026-10-26");
+                return (
+                  <li key={o.who} className="py-5 first:pt-0 last:pb-0">
+                    <p className="text-[15px] leading-snug">
+                      <span className="font-semibold">{o.who}</span>
+                      <span
+                        className={`ml-2 rounded-full px-2 py-0.5 align-middle text-[11px] font-medium ${
+                          state.state === "late" ? "bg-alert-soft text-alert" : "bg-accent-soft text-accent"
+                        }`}
+                      >
+                        {owedLabel(state, o.promise_due)}
+                      </span>
+                    </p>
+                    <p className="mt-1.5 text-[15px] leading-relaxed text-muted">Said they&apos;d {o.promise}.</p>
+                    <p className="mt-3 flex gap-5 text-xs font-medium text-faint">
+                      <span className="text-ink">Got it</span>
+                      <span>Nudge</span>
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-3 text-xs text-faint">Promises people made to you that are late or due soon. Nudge opens a message you can edit and send.</p>
           </section>
           {urgent.length > 0 && (
             <section>
