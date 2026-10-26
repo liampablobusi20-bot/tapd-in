@@ -216,8 +216,8 @@ export default function GuidePage() {
               your list. Tap <strong className="font-semibold text-ink">Done</strong>. Only people saved in your Contacts can be picked.
             </Step>
             <Step n="03" title="Make it run on its own" shot="3">
-              On the same screen, choose <strong className="font-semibold text-ink">Run Immediately</strong>, not Run After Confirmation. If you see{" "}
-              <strong className="font-semibold text-ink">Notify When Run</strong>, turn it off. Tap <strong className="font-semibold text-ink">Next</strong>.
+              On the same screen, choose <strong className="font-semibold text-ink">Run Immediately</strong>, not Run After Confirmation. Look for{" "}
+              <strong className="font-semibold text-ink">Notify When Run</strong> and turn it off. A small banner from Shortcuts may still appear when a text arrives. That&apos;s normal. Tap <strong className="font-semibold text-ink">Next</strong>.
             </Step>
             <Step n="04" title="Create the shortcut" shot="4">
               Tap <strong className="font-semibold text-ink">Create New Shortcut</strong>, search for{" "}
@@ -290,7 +290,7 @@ export default function GuidePage() {
               ["Mail isn't appearing", "Tapd In checks every two minutes. Make sure Settings says Connected. If it says Needs to be reconnected, tap Reconnect."],
               ["Texts aren't arriving", "In Shortcuts, open the automation and check it says Run Immediately and that the person is listed as a Sender. Low Power Mode and Focus modes can delay automations, so try turning them off."],
               ["Texts show a phone number, not a name", "Tap Name this number under the text, or add the person with their number in Settings."],
-              ["A banner appears on every text", "Make sure the automation says Run Immediately. Then in your iPhone's Settings app, search for Shortcuts, open Notifications, and turn off Allow Notifications."],
+              ["A banner appears when a text arrives", "This is Shortcuts telling you it ran, and it's harmless. To hide it, open the automation, tap the top section, and with Run Immediately selected, turn off Notify When Run. Depending on your iPhone's software, you can also search Settings for Shortcuts and turn off its notifications. It can't always be hidden completely."],
               ["Texts arrive twice", "You probably have two automations. In Shortcuts, delete all but one."],
               ["Texts stopped after an iPhone update", "Open the automation and check it still says Run Immediately. Updates can switch it back to asking first."],
             ].map(([problem, fix]) => (

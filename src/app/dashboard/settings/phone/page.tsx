@@ -9,7 +9,7 @@ const steps = [
   { title: "Make your private address", body: "Tap the button in the first box below, then tap Copy address. This address is how your phone sends texts to Tapd In. Keep it to yourself." },
   { title: "Start a new automation", body: "Open the Shortcuts app (the blue and pink icon). Tap Automation at the bottom, then the + button, then choose Message." },
   { title: "Choose whose texts to send", body: "Next to Sender, tap Choose and tap the people whose texts count as business, then tap Done. Only the people you pick are ever sent. Texts from everyone else stay on your phone. Only people saved in your Contacts can be picked." },
-  { title: "Make it run on its own", body: "On the same screen, choose Run Immediately (not Run After Confirmation). If you see a Notify When Run switch, turn it off. Then tap Next." },
+  { title: "Make it run on its own", body: "On the same screen, choose Run Immediately (not Run After Confirmation). Look for a Notify When Run switch and turn it off. A small banner from Shortcuts may still appear when a text arrives, and that's normal. Then tap Next." },
   { title: "Create the shortcut", body: "Tap Create New Shortcut, then search for Get Contents of URL and tap it." },
   { title: "Paste your address", body: "Tap the blue URL word and paste the address you copied. Then tap the small arrow to show more options." },
   { title: "Choose how to send", body: "Set Method to POST and Request Body to Form." },
@@ -107,10 +107,11 @@ export default async function PhoneGuidePage() {
       </details>
 
       <section className="mt-12">
-        <h2 className="text-lg font-semibold tracking-tight">If you see a banner every time a text arrives</h2>
+        <h2 className="text-lg font-semibold tracking-tight">If you see a banner when a text arrives</h2>
         <p className="mt-3 text-muted">
-          Make sure the automation is set to Run Immediately. Then, in your iPhone&apos;s main Settings app, search for Shortcuts, open
-          Notifications, and turn off Allow Notifications.
+          That&apos;s Shortcuts telling you it ran, and it&apos;s harmless. To hide it, turn off Notify When Run in the automation. Depending on
+          your iPhone&apos;s software you can also search Settings for Shortcuts and turn off its notifications. It can&apos;t always be hidden
+          completely.
         </p>
       </section>
 
