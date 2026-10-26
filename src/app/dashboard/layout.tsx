@@ -25,6 +25,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <Link href="/dashboard" className="text-muted transition-colors hover:text-ink">
                   Briefing
                 </Link>
+                <Link href="/dashboard/people" className="text-muted transition-colors hover:text-ink">
+                  People
+                </Link>
                 <Link href="/dashboard/settings" className="text-muted transition-colors hover:text-ink">
                   Settings
                 </Link>

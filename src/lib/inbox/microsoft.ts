@@ -81,6 +81,7 @@ export async function fetchAccountEmail(accessToken: string, fetchFn: FetchFn = 
 type GraphMessage = {
   id: string;
   internetMessageId?: string | null;
+  conversationId?: string | null;
   subject?: string | null;
   receivedDateTime: string;
   from?: { emailAddress?: { name?: string | null; address?: string | null } } | null;
@@ -102,6 +103,7 @@ export function toIncoming(m: GraphMessage): { externalId: string; message: Inco
       subject: m.subject ?? null,
       body: body.slice(0, 20_000),
       receivedAt: m.receivedDateTime,
+      conversationId: m.conversationId ?? null,
       headers: mailHeaders(headers),
     },
   };
@@ -117,7 +119,7 @@ export async function fetchInboxSince(
   sinceIso: string,
   fetchFn: FetchFn = fetch
 ): Promise<GraphMessage[]> {
-  const select = "id,internetMessageId,subject,from,receivedDateTime,body,bodyPreview,internetMessageHeaders";
+  const select = "id,internetMessageId,conversationId,subject,from,receivedDateTime,body,bodyPreview,internetMessageHeaders";
   let url: string | null =
     `${GRAPH}/me/mailFolders/inbox/messages?$filter=${encodeURIComponent(`receivedDateTime ge ${sinceIso}`)}` +
     `&$orderby=${encodeURIComponent("receivedDateTime asc")}&$top=${PAGE_SIZE}&$select=${select}`;
@@ -132,4 +134,30 @@ export async function fetchInboxSince(
     url = data["@odata.nextLink"] ?? null;
   }
   return all;
+}
+
+// Dates and conversation ids of recent Sent Items, nothing else. Used only to see
+// whether a message has been answered. The text of sent mail is never requested.
+export async function fetchSentSince(
+  accessToken: string,
+  sinceIso: string,
+  fetchFn: FetchFn = fetch
+): Promise<{ conversationId: string; sentAt: string }[]> {
+  let url: string | null =
+    `${GRAPH}/me/mailFolders/sentitems/messages?$filter=${encodeURIComponent(`sentDateTime ge ${sinceIso}`)}` +
+    `&$orderby=${encodeURIComponent("sentDateTime asc")}&$top=${PAGE_SIZE}&$select=conversationId,sentDateTime`;
+  const sent: { conversationId: string; sentAt: string }[] = [];
+  for (let page = 0; url && page < MAX_PAGES; page++) {
+    const response: Response = await fetchFn(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!response.ok) throw new Error(`Graph returned ${response.status}`);
+    const data = (await response.json()) as {
+      value?: { conversationId?: string | null; sentDateTime?: string | null }[];
+      "@odata.nextLink"?: string;
+    };
+    for (const item of data.value ?? []) {
+      if (item.conversationId && item.sentDateTime) sent.push({ conversationId: item.conversationId, sentAt: item.sentDateTime });
+    }
+    url = data["@odata.nextLink"] ?? null;
+  }
+  return sent;
 }

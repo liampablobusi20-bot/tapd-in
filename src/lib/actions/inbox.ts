@@ -92,3 +92,15 @@ export async function sendTestDigest(): Promise<TestDigestResult> {
   const status = await sendDigest(user.id, lastSevenDays(Date.now()));
   return { status: status === "sent" ? "sent" : "failed" };
 }
+
+// "Done" on something waiting on the owner. It leaves the Waiting list but stays in the briefing.
+export async function resolveWaiting(id: string) {
+  const { user } = await requireInboxOwner();
+  const { error } = await createAdminClient()
+    .from("inbox_messages")
+    .update({ resolved_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("owner_id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard");
+}

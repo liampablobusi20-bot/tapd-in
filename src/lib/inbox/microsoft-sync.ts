@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { ingestMessage } from "@/lib/inbox/process";
-import { MicrosoftAuthError, fetchInboxSince, refreshTokens, toIncoming } from "@/lib/inbox/microsoft";
+import { MicrosoftAuthError, fetchInboxSince, fetchSentSince, refreshTokens, toIncoming } from "@/lib/inbox/microsoft";
 
 export function microsoftCreds() {
   const clientId = process.env.MICROSOFT_CLIENT_ID;
@@ -46,11 +46,40 @@ export async function syncConnection(conn: Connection): Promise<number> {
     if (raw.receivedDateTime > newest) newest = raw.receivedDateTime;
   }
 
+  await markAnswered(conn.owner_id, tokens.accessToken);
+
   await supabase
     .from("inbox_connections")
     .update({ synced_through: newest, last_synced_at: new Date().toISOString() })
     .eq("id", conn.id);
   return messages.length;
+}
+
+// Notes which conversations the owner has replied to. Only the date and the thread
+// id of recent Sent Items are read, never their text. A failure here is not fatal.
+async function markAnswered(ownerId: string, accessToken: string) {
+  try {
+    const sent = await fetchSentSince(accessToken, new Date(Date.now() - 2 * 86_400_000).toISOString());
+    const latest = new Map<string, string>();
+    for (const item of sent) {
+      if (!latest.has(item.conversationId) || item.sentAt > latest.get(item.conversationId)!) {
+        latest.set(item.conversationId, item.sentAt);
+      }
+    }
+    const supabase = createAdminClient();
+    for (const [conversationId, answeredAt] of latest) {
+      await supabase
+        .from("inbox_messages")
+        .update({ answered_at: answeredAt })
+        .eq("owner_id", ownerId)
+        .eq("source", "microsoft")
+        .eq("conversation_id", conversationId)
+        .is("answered_at", null)
+        .lt("received_at", answeredAt);
+    }
+  } catch (err) {
+    console.error("Checking Sent Items failed:", err instanceof Error ? err.message : "unknown error");
+  }
 }
 
 export async function syncAllMicrosoft(): Promise<{ connections: number; messages: number; failed: number }> {

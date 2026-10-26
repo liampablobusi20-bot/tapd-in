@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { addTextContact, createTextKey, removeTextContact, revokeTextKey, summarizeConversation, nameTextNumber, setTextSuggestions, resolveSuggestion } from "@/lib/actions/texts";
+import { catchMeUp } from "@/lib/actions/people";
 import { disconnectEmail } from "@/lib/actions/connections";
 import { PendingButton, Spinner } from "@/components/pending-button";
 import { btnPrimary, btnSecondary, field } from "@/components/ui";
@@ -342,5 +343,44 @@ export function SuggestionRow({ id, label }: { id: string; label: string }) {
         </form>
       )}
     </li>
+  );
+}
+
+export function CatchMeUpButton({ personKey }: { personKey: string }) {
+  const [pending, start] = useTransition();
+  const [summary, setSummary] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (summary) {
+    return (
+      <div className="rounded-3xl bg-accent-soft px-6 py-5">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-accent">Catch me up</p>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink">{summary}</p>
+        <button type="button" onClick={() => setSummary(null)} className="mt-3 text-xs text-muted hover:text-ink">
+          Hide
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        disabled={pending}
+        className={btnSecondary}
+        onClick={() =>
+          start(async () => {
+            setError(null);
+            const result = await catchMeUp(personKey);
+            if ("error" in result) setError(result.error);
+            else setSummary(result.summary);
+          })
+        }
+      >
+        {pending && <Spinner />}
+        {pending ? "Reading…" : "Catch me up"}
+      </button>
+      {error && <span className="text-sm text-alert">{error}</span>}
+    </div>
   );
 }

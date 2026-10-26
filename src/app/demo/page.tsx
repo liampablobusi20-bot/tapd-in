@@ -17,6 +17,8 @@ type Item = {
   source: Source;
   topic: string;
   urgent?: boolean;
+  // Someone is waiting on the reader for a reply.
+  waiting?: boolean;
   summary: string;
   whole?: string;
   count?: number;
@@ -31,6 +33,7 @@ const items: Item[] = [
     source: "email",
     topic: "Clients",
     urgent: true,
+    waiting: true,
     summary: "The revised Harbor contract needs your signature by Friday, or the 12% discount expires.",
   },
   {
@@ -40,6 +43,7 @@ const items: Item[] = [
     source: "text",
     topic: "Team",
     urgent: true,
+    waiting: true,
     summary: "The crane inspection failed this morning. He wants approval to reschedule and asks who to call.",
     count: 4,
     whole:
@@ -51,7 +55,17 @@ const items: Item[] = [
     when: "Thu, Oct 22",
     source: "email",
     topic: "Clients",
+    waiting: true,
     summary: "Asked to move the quarterly review from the 21st to the 24th and sent two possible times.",
+  },
+  {
+    who: "Sam Ortiz",
+    iso: "2026-10-17T18:00:00Z",
+    when: "Sat, Oct 17",
+    source: "text",
+    topic: "Clients",
+    waiting: true,
+    summary: "Still waiting on your go-ahead for the Henderson job. The crew is on hold until they hear from you.",
   },
   {
     who: "Alvaro Reyes",
@@ -80,22 +94,29 @@ const items: Item[] = [
 ];
 
 const topics = ["Clients", "Team", "Vendors"];
-const urgent = items.filter((i) => i.urgent);
-const rest = items.filter((i) => !i.urgent);
+// The page and the sample email both measure waiting from the same moment.
+const DEMO_NOW = Date.parse("2026-10-26T07:00:00Z");
+const waitingDays = (item: Item) => Math.max(0, Math.floor((DEMO_NOW - Date.parse(item.iso)) / 86_400_000));
+const waiting = items.filter((i) => i.waiting).sort((a, b) => waitingDays(b) - waitingDays(a));
+const urgent = items.filter((i) => i.urgent && !i.waiting);
+const rest = items.filter((i) => !i.urgent && !i.waiting);
 
 // The Monday email, built by the same code that builds the real one.
-const digestMessages: DigestMessage[] = items.map((item) => ({
+const toDigest = (item: Item): DigestMessage => ({
+  id: item.who,
   category_id: item.topic,
   sender_name: item.who,
   sender_address: null,
   summary: item.summary,
   importance: item.urgent ? "urgent" : "normal",
   received_at: item.iso,
-}));
+});
+const digestMessages: DigestMessage[] = items.map(toDigest);
 const digest = composeDigest({
   name: "Ava",
   categories: topics.map((name, i) => ({ id: name, name, sort_order: i })),
   messages: digestMessages,
+  waiting: waiting.map(toDigest),
   weekStart: "2026-10-19T07:00:00Z",
   weekEnd: "2026-10-26T07:00:00Z",
 });
@@ -111,6 +132,11 @@ function Row({ item }: { item: Item }) {
         {item.urgent && (
           <span className="ml-2 rounded-full bg-alert-soft px-2 py-0.5 align-middle text-[11px] font-medium text-alert">Urgent</span>
         )}
+        {item.waiting && (
+          <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 align-middle text-[11px] font-medium text-accent">
+            {waitingDays(item) === 0 ? "Today" : `Waiting ${waitingDays(item)} ${waitingDays(item) === 1 ? "day" : "days"}`}
+          </span>
+        )}
       </p>
       <p className="mt-1.5 text-[15px] leading-relaxed text-muted">{item.summary}</p>
       {item.whole && (
@@ -122,7 +148,10 @@ function Row({ item }: { item: Item }) {
       {!item.whole && item.count && (
         <p className="mt-3 text-xs font-medium text-faint">Summarize the conversation ({item.count} texts)</p>
       )}
-      <p className="mt-3 text-xs font-medium text-faint">Reply</p>
+      <p className="mt-3 flex gap-5 text-xs font-medium text-faint">
+        {item.waiting && <span className="text-ink">Done</span>}
+        <span>Reply</span>
+      </p>
     </li>
   );
 }
@@ -146,18 +175,37 @@ export default function DemoPage() {
         <p className={`${eyebrow} mt-10`}>Last 7 days</p>
         <h1 className="mt-4 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">Ava, here&apos;s your week.</h1>
         <p className="mt-6 text-muted">
-          {items.length} messages sorted from Outlook and texts · <span className="font-medium text-alert">{urgent.length} urgent</span>
+          <span className="font-medium text-accent">{waiting.length} waiting on you</span> · {items.length} messages sorted from Outlook and texts
+          {urgent.length > 0 && (
+            <>
+              {" "}
+              · <span className="font-medium text-alert">{urgent.length} urgent</span>
+            </>
+          )}
         </p>
 
         <div className="mt-12 flex flex-col gap-12">
           <section>
-            <p className={`${eyebrow} text-alert`}>Needs your attention</p>
-            <ul className={`${card} border-alert/20`}>
-              {urgent.map((item) => (
+            <p className={`${eyebrow} text-accent`}>Waiting on you</p>
+            <ul className={`${card} border-accent/25`}>
+              {waiting.map((item) => (
                 <Row key={item.who} item={item} />
               ))}
             </ul>
+            <p className="mt-3 text-xs text-faint">
+              Tapd In notices who is waiting on a reply from you. They drop off once you answer in Outlook, or when you tap Done.
+            </p>
           </section>
+          {urgent.length > 0 && (
+            <section>
+              <p className={`${eyebrow} text-alert`}>Needs your attention</p>
+              <ul className={`${card} border-alert/20`}>
+                {urgent.map((item) => (
+                  <Row key={item.who} item={item} />
+                ))}
+              </ul>
+            </section>
+          )}
           {topics.map((topic) => {
             const list = rest.filter((i) => i.topic === topic);
             return list.length ? (

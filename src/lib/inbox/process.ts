@@ -69,6 +69,7 @@ export async function ingestMessage(
       received_at: message.receivedAt,
       raw_text: message.body,
       headers: message.headers ?? null,
+      conversation_id: message.conversationId ?? null,
     },
     { onConflict: "owner_id,source,external_id", ignoreDuplicates: true }
   );
@@ -144,6 +145,7 @@ export async function processPending(limit = BATCH) {
           category_id: triage.categoryId,
           summary: triage.summary,
           importance: triage.importance,
+          needs_reply: triage.needsReply,
           input_tokens: usage.inputTokens,
           output_tokens: usage.outputTokens,
           cost_micros: costMicros(usage),

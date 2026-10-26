@@ -34,7 +34,7 @@ export async function sendDigest(
     return "failed";
   }
 
-  const [{ data: categories }, { data: messages }] = await Promise.all([
+  const [{ data: categories }, { data: messages }, { data: owed }] = await Promise.all([
     supabase
       .from("inbox_categories")
       .select("id, name, sort_order")
@@ -42,13 +42,26 @@ export async function sendDigest(
       .order("sort_order", { ascending: true }),
     supabase
       .from("inbox_messages")
-      .select("category_id, sender_name, sender_address, summary, importance, received_at")
+      .select("id, category_id, sender_name, sender_address, summary, importance, received_at")
       .eq("owner_id", ownerId)
       .eq("status", "processed")
       .gte("received_at", window.startIso)
       .lt("received_at", window.endIso)
       .order("received_at", { ascending: false })
       .limit(500),
+    // Anyone still waiting on the owner, even from before this week.
+    supabase
+      .from("inbox_messages")
+      .select("id, category_id, sender_name, sender_address, summary, importance, received_at")
+      .eq("owner_id", ownerId)
+      .eq("status", "processed")
+      .eq("needs_reply", true)
+      .is("resolved_at", null)
+      .is("answered_at", null)
+      .gte("received_at", new Date(Date.parse(window.endIso) - 30 * 86_400_000).toISOString())
+      .lt("received_at", window.endIso)
+      .order("received_at", { ascending: true })
+      .limit(30),
   ]);
 
   const site = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
@@ -56,6 +69,9 @@ export async function sendDigest(
     name: owner.display_name,
     categories: categories ?? [],
     messages: (messages ?? []).flatMap((m) =>
+      m.summary && m.importance ? [{ ...m, summary: m.summary, importance: m.importance }] : []
+    ),
+    waiting: (owed ?? []).flatMap((m) =>
       m.summary && m.importance ? [{ ...m, summary: m.summary, importance: m.importance }] : []
     ),
     weekStart: window.startIso,

@@ -5,6 +5,7 @@ import type { Importance } from "@/lib/inbox/triage";
 export type DigestCategory = { id: string; name: string; sort_order: number };
 
 export type DigestMessage = {
+  id?: string;
   category_id: string | null;
   sender_name: string | null;
   sender_address: string | null;
@@ -39,6 +40,7 @@ export function composeDigest({
   weekEnd,
   timeZone = "America/Phoenix",
   appUrl,
+  waiting = [],
 }: {
   name: string | null;
   categories: DigestCategory[];
@@ -47,19 +49,36 @@ export function composeDigest({
   weekEnd: string;
   timeZone?: string;
   appUrl?: string;
+  // Things someone is waiting on the reader for, which can be older than the week.
+  waiting?: DigestMessage[];
 }): { subject: string; text: string } {
-  // Low-importance chatter stays out of the update; it's still in the app.
-  const kept = messages.filter((m) => m.importance !== "low");
-  const urgent = kept.filter((m) => m.importance === "urgent").length;
+  const waitingIds = new Set(waiting.map((m) => m.id).filter(Boolean));
+  // Low-importance chatter stays out of the update; it's still in the app. Anything
+  // already listed as waiting is shown there instead of twice.
+  const kept = messages.filter((m) => m.importance !== "low" && !(m.id && waitingIds.has(m.id)));
+  const urgent = [...kept, ...waiting].filter((m) => m.importance === "urgent").length;
+  const total = kept.length + waiting.length;
 
-  const subject = kept.length
-    ? `Your week: ${kept.length} ${kept.length === 1 ? "thing" : "things"} worth knowing` +
-      (urgent ? `, ${urgent} urgent` : "")
+  const subject = total
+    ? `Your week: ${total} ${total === 1 ? "thing" : "things"} worth knowing` +
+      (urgent ? `, ${urgent} urgent` : "") +
+      (waiting.length ? `, ${waiting.length} waiting on you` : "")
     : "Your week: nothing important came in";
 
   const lines: string[] = [];
   lines.push(`${name ? `${name}, here` : "Here"} is your week (${range(weekStart, weekEnd, timeZone)}).`);
   lines.push("");
+
+  if (waiting.length) {
+    const asOf = new Date(weekEnd).getTime();
+    lines.push("WAITING ON YOU");
+    for (const m of [...waiting].sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime())) {
+      const days = Math.max(0, Math.floor((asOf - new Date(m.received_at).getTime()) / 86_400_000));
+      const age = days === 0 ? "today" : `${days} ${days === 1 ? "day" : "days"}`;
+      lines.push(`• ${who(m)} (${age}): ${m.importance === "urgent" ? "URGENT: " : ""}${m.summary}`);
+    }
+    lines.push("");
+  }
 
   const ordered = [...categories].sort((a, b) => a.sort_order - b.sort_order);
   const sections: { title: string; items: DigestMessage[] }[] = ordered.map((c) => ({
@@ -86,7 +105,7 @@ export function composeDigest({
     lines.push("");
   }
 
-  if (!kept.length) {
+  if (!kept.length && !waiting.length) {
     lines.push("Nothing important came through this week.");
     lines.push("");
   }
