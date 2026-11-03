@@ -123,7 +123,7 @@ export async function processPending(limit = BATCH) {
     if (reason) {
       await supabase
         .from("inbox_messages")
-        .update({ status: "skipped", skip_reason: reason, raw_text: null, processed_at: new Date().toISOString() })
+        .update({ status: "skipped", skip_reason: reason, raw_text: null, subject: null, processed_at: new Date().toISOString() })
         .eq("id", row.id);
       tally.skipped++;
       continue;
@@ -155,6 +155,7 @@ export async function processPending(limit = BATCH) {
           output_tokens: usage.outputTokens,
           cost_micros: costMicros(usage),
           raw_text: null,
+          subject: null,
           processed_at: new Date().toISOString(),
         })
         .eq("id", row.id);
@@ -162,7 +163,7 @@ export async function processPending(limit = BATCH) {
     } else if (row.attempts + 1 >= MAX_ATTEMPTS) {
       await supabase
         .from("inbox_messages")
-        .update({ status: "failed", raw_text: null, processed_at: new Date().toISOString() })
+        .update({ status: "failed", raw_text: null, subject: null, processed_at: new Date().toISOString() })
         .eq("id", row.id);
       tally.failed++;
     } else {
@@ -189,8 +190,8 @@ export async function recordNotice(
       external_id: externalId,
       sender_name: message.senderName,
       sender_address: message.senderAddress,
-      subject: message.subject,
       received_at: message.receivedAt,
+      subject: null,
       status: "processed",
       summary,
       importance: "urgent",

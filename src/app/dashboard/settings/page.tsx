@@ -7,6 +7,7 @@ import { btnPrimary, btnSecondary, eyebrow } from "@/components/ui";
 import { CategoryForm, CopyAddress, NameForm, RemoveButton } from "../inbox-forms";
 import { ContactForm, KeyMaker, RemoveItem, SuggestionRow, SuggestionsToggle } from "../texts-forms";
 import { formatPhone } from "@/lib/inbox/texts";
+import { DeleteDataForm } from "../delete-data";
 
 const CONNECT_ERRORS: Record<string, string> = {
   "needs-admin":
@@ -309,6 +310,23 @@ export default async function SettingsPage({
         <div className={card}>
           <NameForm defaultValue={profile?.display_name ?? ""} />
         </div>
+      </section>
+
+      <section className="mt-14">
+        <h2 className="text-lg font-semibold tracking-tight">Your data</h2>
+        <details className="mt-1.5">
+          <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Delete all my data</summary>
+          <div className={card}>
+            <p className="max-w-md text-sm leading-relaxed text-muted">
+              This permanently deletes every message summary, the people whose texts count, your phone keys, and your connected email.
+              Your forwarding address changes. Your topics, your name, and your account are kept. It can&apos;t be undone. To fully remove
+              Tapd In&apos;s access to Outlook, also remove it at myapps.microsoft.com.
+            </p>
+            <div className="mt-5">
+              <DeleteDataForm />
+            </div>
+          </div>
+        </details>
       </section>
     </div>
   );
