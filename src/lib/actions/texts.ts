@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireInboxOwner } from "@/lib/inbox/require-owner";
 import { logActivity } from "@/lib/inbox/activity-log";
+import { applyConfigPatch } from "@/lib/inbox/config-store";
 import { generateKey, normalizeHandle } from "@/lib/inbox/texts";
 import { conversationKey, groupConversations } from "@/lib/inbox/conversations";
 import { summarizeConversationNotes } from "@/lib/inbox/conversation-summary";
@@ -178,4 +179,19 @@ export async function resolveSuggestion(id: string, action: "add" | "ignore", na
   }
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
+}
+
+export type ModeResult = { ok: true } | { ok: false; error: string };
+
+// Chooses how texts reach Tapd In. Easy mode means the phone sends every text and Tapd In keeps only
+// the people on the list, so it needs the owner's explicit agreement, which is recorded.
+export async function setTextsMode(mode: "private" | "easy", agreed: boolean): Promise<ModeResult> {
+  const { user } = await requireInboxOwner();
+  if (mode === "easy" && !agreed) return { ok: false, error: "Please tick the box to confirm you understand." };
+  const result = await applyConfigPatch(user.id, { textsMode: mode }, "customer", mode === "easy" ? "Agreed to easy mode" : "Back to private mode", { log: false });
+  if (!result.ok) return { ok: false, error: "Couldn't save that. Please try again." };
+  if (result.changes.length > 0) await logActivity(user.id, mode === "easy" ? "texts_easy_on" : "texts_easy_off");
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/settings/phone");
+  return { ok: true };
 }

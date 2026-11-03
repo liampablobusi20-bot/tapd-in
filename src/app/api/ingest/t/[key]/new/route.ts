@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ownerFromKey } from "@/lib/inbox/text-auth";
 import { normalizeHandle } from "@/lib/inbox/texts";
+import { recordSuggestion } from "@/lib/inbox/text-suggestions";
 
 // Receives only a phone number (never a message) when someone not on the list
 // texts the owner, and only if the owner has turned suggestions on.
@@ -30,33 +31,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ key
   const handle = normalizeHandle(from);
   if (!handle) return NextResponse.json({ ok: true, recorded: false });
 
-  // Already on the list, or already dismissed, means nothing to suggest.
-  const { data: contact } = await supabase
-    .from("inbox_text_contacts")
-    .select("id")
-    .eq("owner_id", auth.ownerId)
-    .eq("handle", handle)
-    .maybeSingle();
-  if (contact) return NextResponse.json({ ok: true, recorded: false });
-
-  const { data: existing } = await supabase
-    .from("inbox_text_suggestions")
-    .select("id, seen_count, status")
-    .eq("owner_id", auth.ownerId)
-    .eq("handle", handle)
-    .maybeSingle();
-  if (existing) {
-    await supabase
-      .from("inbox_text_suggestions")
-      .update({ seen_count: existing.seen_count + 1, last_seen: new Date().toISOString() })
-      .eq("id", existing.id);
-  } else {
-    const { count } = await supabase
-      .from("inbox_text_suggestions")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", auth.ownerId);
-    if ((count ?? 0) >= 200) return NextResponse.json({ ok: true, recorded: false });
-    await supabase.from("inbox_text_suggestions").insert({ owner_id: auth.ownerId, handle });
-  }
-  return NextResponse.json({ ok: true, recorded: true });
+  const recorded = await recordSuggestion(auth.ownerId, handle);
+  return NextResponse.json({ ok: true, recorded });
 }

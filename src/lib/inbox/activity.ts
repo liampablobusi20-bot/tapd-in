@@ -18,6 +18,8 @@ export type ActivityEvent =
   | "retention_changed"
   | "urgent_alerts_on"
   | "settings_adjusted"
+  | "texts_easy_on"
+  | "texts_easy_off"
   | "subscription_started"
   | "payment_failed"
   | "subscription_ended"
@@ -44,6 +46,8 @@ const WORDS: Record<ActivityEvent, string> = {
   retention_changed: "Keep-summaries setting changed",
   urgent_alerts_on: "Urgent alerts turned on",
   settings_adjusted: "Your settings were adjusted by Tapd In",
+  texts_easy_on: "Texts: easy mode turned on",
+  texts_easy_off: "Texts: back to private mode",
   subscription_started: "Subscription started",
   payment_failed: "A payment failed",
   subscription_ended: "Subscription ended",

@@ -73,6 +73,14 @@ export default function IphoneCheatSheetPage() {
             </p>
           </section>
           <section className="rounded-2xl border border-line bg-card px-5 py-4 sm:col-span-2 print:break-inside-avoid print:rounded-lg print:px-3 print:py-2">
+            <h2 className="text-sm font-semibold tracking-tight">Easy mode (optional)</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted print:text-xs">
+              Prefer not to edit the automation when you add someone? In Tapd In choose <em>Settings → How texts are sent → Easy mode</em>, and in step 4 leave
+              Sender empty. Your phone then sends every text, and Tapd In immediately discards any that aren&apos;t from the people on your list. Add someone in
+              Settings and it works straight away.
+            </p>
+          </section>
+          <section className="rounded-2xl border border-line bg-card px-5 py-4 sm:col-span-2 print:break-inside-avoid print:rounded-lg print:px-3 print:py-2">
             <h2 className="text-sm font-semibold tracking-tight">If texts stop showing up</h2>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-muted print:text-xs">
               <li>Shortcuts → Automation → your automation: it must say <strong className="font-medium text-ink">Run Immediately</strong>. An iPhone update can switch it back.</li>

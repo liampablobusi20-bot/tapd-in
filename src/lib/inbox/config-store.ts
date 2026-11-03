@@ -23,10 +23,16 @@ export type ApplyResult = { ok: true; changes: string[] } | { ok: false; errors:
 
 // The one safe way to change an account's settings: checked, recorded with what it was
 // before (so it can be undone), and noted in that account's own activity log.
-export async function applyConfigPatch(ownerId: string, input: unknown, by: string, note?: string | null): Promise<ApplyResult> {
+export async function applyConfigPatch(
+  ownerId: string,
+  input: unknown,
+  by: string,
+  note?: string | null,
+  options: { log?: boolean } = {}
+): Promise<ApplyResult> {
   const validated = validatePatch(input);
   if (!validated.ok) return validated;
-  return writeConfig(ownerId, (before) => mergePatch(before, validated.patch as Patch), by, note);
+  return writeConfig(ownerId, (before) => mergePatch(before, validated.patch as Patch), by, note, options.log ?? true);
 }
 
 export async function revertConfig(ownerId: string, historyId: string, by: string): Promise<ApplyResult> {
@@ -41,7 +47,7 @@ export async function revertConfig(ownerId: string, historyId: string, by: strin
   return writeConfig(ownerId, () => restored, by, `Reverted change ${historyId.slice(0, 8)}`);
 }
 
-async function writeConfig(ownerId: string, next: (before: unknown) => AccountConfig, by: string, note?: string | null): Promise<ApplyResult> {
+async function writeConfig(ownerId: string, next: (before: unknown) => AccountConfig, by: string, note?: string | null, log = true): Promise<ApplyResult> {
   const admin = createAdminClient();
   const { data: current } = await admin.from("account_config").select("config").eq("owner_id", ownerId).maybeSingle();
   const beforeStored = (current?.config ?? {}) as Record<string, unknown>;
@@ -54,6 +60,7 @@ async function writeConfig(ownerId: string, next: (before: unknown) => AccountCo
   const { error } = await admin.from("account_config").upsert({ owner_id: ownerId, config: afterStored, updated_at: now, updated_by: by }, { onConflict: "owner_id" });
   if (error) return { ok: false, errors: ["Couldn't save that. Please try again."] };
   await admin.from("account_config_history").insert({ owner_id: ownerId, changed_by: by, note: note ?? null, before: beforeStored, after: afterStored });
-  await logActivity(ownerId, "settings_adjusted", changes.length === 1 ? changes[0] : `${changes.length} changes`);
+  // A change the customer made themselves is logged by their own action, not as "adjusted by Tapd In".
+  if (log) await logActivity(ownerId, "settings_adjusted", changes.length === 1 ? changes[0] : `${changes.length} changes`);
   return { ok: true, changes };
 }

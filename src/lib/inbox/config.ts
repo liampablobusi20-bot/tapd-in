@@ -27,6 +27,9 @@ export type AccountConfig = {
   // Senders whose messages are never shown or summarized.
   ignoreSenders: string[];
   summaryStyle: "short" | "normal";
+  // How texts reach Tapd In. "private": the phone sends only the people picked in Shortcuts.
+  // "easy": the phone sends every text and the server keeps only the people on the list here.
+  textsMode: "private" | "easy";
   // Send urgent-alert emails only for the alwaysUrgent senders.
   urgentVipOnly: boolean;
   // Hours (0 to 23, Arizona time) between which no alert is emailed.
@@ -49,6 +52,7 @@ export const DEFAULT_CONFIG: AccountConfig = {
   alwaysUrgent: [],
   ignoreSenders: [],
   summaryStyle: "normal",
+  textsMode: "private",
   urgentVipOnly: false,
   quietFromHour: 22,
   quietUntilHour: 6,
@@ -104,6 +108,10 @@ export function validatePatch(input: unknown): Validated {
         if (value !== "short" && value !== "normal") errors.push('summaryStyle must be "short" or "normal".');
         else patch.summaryStyle = value;
         break;
+      case "textsMode":
+        if (value !== "private" && value !== "easy") errors.push('textsMode must be "private" or "easy".');
+        else patch.textsMode = value;
+        break;
       case "urgentVipOnly":
         if (typeof value !== "boolean") errors.push("urgentVipOnly must be true or false.");
         else patch.urgentVipOnly = value;
@@ -144,6 +152,7 @@ export function resolveConfig(stored: unknown): AccountConfig {
   const ignore = cleanList(s.ignoreSenders);
   if (ignore) base.ignoreSenders = ignore;
   if (s.summaryStyle === "short") base.summaryStyle = "short";
+  if (s.textsMode === "easy") base.textsMode = "easy";
   if (typeof s.urgentVipOnly === "boolean") base.urgentVipOnly = s.urgentVipOnly;
   if (isHour(s.quietFromHour)) base.quietFromHour = s.quietFromHour;
   if (isHour(s.quietUntilHour)) base.quietUntilHour = s.quietUntilHour;
@@ -170,6 +179,7 @@ export function toStored(config: AccountConfig): Record<string, unknown> {
   if (config.alwaysUrgent.length) out.alwaysUrgent = config.alwaysUrgent;
   if (config.ignoreSenders.length) out.ignoreSenders = config.ignoreSenders;
   if (config.summaryStyle !== d.summaryStyle) out.summaryStyle = config.summaryStyle;
+  if (config.textsMode !== d.textsMode) out.textsMode = config.textsMode;
   if (config.urgentVipOnly !== d.urgentVipOnly) out.urgentVipOnly = config.urgentVipOnly;
   if (config.quietFromHour !== d.quietFromHour) out.quietFromHour = config.quietFromHour;
   if (config.quietUntilHour !== d.quietUntilHour) out.quietUntilHour = config.quietUntilHour;
@@ -192,6 +202,7 @@ export function describeChange(before: AccountConfig, after: AccountConfig): str
   listDiff("Always urgent", before.alwaysUrgent, after.alwaysUrgent);
   listDiff("Ignored senders", before.ignoreSenders, after.ignoreSenders);
   if (before.summaryStyle !== after.summaryStyle) lines.push(`Summary style: ${after.summaryStyle}`);
+  if (before.textsMode !== after.textsMode) lines.push(`Texts mode: ${after.textsMode}`);
   if (before.urgentVipOnly !== after.urgentVipOnly) lines.push(`Urgent alerts only for always-urgent senders: ${after.urgentVipOnly ? "on" : "off"}`);
   if (before.quietFromHour !== after.quietFromHour || before.quietUntilHour !== after.quietUntilHour)
     lines.push(`Quiet hours: ${after.quietFromHour}:00 to ${after.quietUntilHour}:00`);

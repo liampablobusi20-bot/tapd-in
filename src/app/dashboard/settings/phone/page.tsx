@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { eyebrow } from "@/components/ui";
 import { PhoneSetup } from "../../texts-forms";
+import { getConfig } from "@/lib/inbox/config-store";
 
 const steps = [
   { title: "Open this page on your iPhone", body: "Do the whole setup on the phone itself, in Safari, signed in to Tapd In." },
@@ -19,6 +20,22 @@ const steps = [
   { title: "Test it", body: "Ask someone you picked to text you something. Within a minute, \"Last text received\" above should change and the text will appear in your briefing. Tap Name this number under it to give them a name." },
 ];
 
+// Easy mode: the same automation, but with nobody picked as a Sender. Tapd In keeps only the people on the
+// list in Settings, so adding someone later never means touching the phone again.
+const easySteps = steps.map((step) =>
+  step.title === "Choose whose texts to send"
+    ? {
+        title: "Leave Sender empty",
+        body: "Don't pick anyone under Sender. Leave it so any message starts the automation. Tapd In keeps only the people on the list in Settings and immediately discards every other text.",
+      }
+    : step.title === "Test it"
+      ? {
+          title: "Test it",
+          body: "Add yourself or a friend to the list in Settings, then ask them to text you. Within a minute \"Last text received\" above should change and the text will appear in your briefing. A text from someone not on your list will not appear anywhere. That is the point.",
+        }
+      : step
+);
+
 export default async function PhoneGuidePage() {
   const supabase = await createClient();
   const {
@@ -34,6 +51,16 @@ export default async function PhoneGuidePage() {
     .limit(1)
     .maybeSingle();
 
+  const config = await getConfig(user.id);
+  const easy = config.textsMode === "easy";
+  const guide = easy ? easySteps : steps;
+  const { data: keyRows } = await supabase
+    .from("inbox_text_keys")
+    .select("last_used_at")
+    .is("revoked_at", null)
+    .order("last_used_at", { ascending: false, nullsFirst: false })
+    .limit(1);
+  const lastCheckIn = keyRows?.[0]?.last_used_at ?? null;
   const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
   const card = "mt-5 rounded-3xl border border-line bg-card p-7 sm:p-8";
 
@@ -55,8 +82,9 @@ export default async function PhoneGuidePage() {
       <p className={`${eyebrow} mt-8`}>Texts</p>
       <h1 className="mt-4 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">Set up texts on your iPhone</h1>
       <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
-        About ten minutes, once. After that, texts from the people you choose show up in your briefing on their own. Texts from everyone
-        else stay on your phone.
+        {easy
+          ? "About ten minutes, once. After that, you add people in Tapd In and their texts show up on their own. Nothing else is kept."
+          : "About ten minutes, once. After that, texts from the people you choose show up in your briefing on their own. Texts from everyone else stay on your phone."}
       </p>
       <p className="mt-4 max-w-xl rounded-2xl bg-alert-soft px-5 py-3 text-sm text-alert">
         This guide is new. If a step doesn&apos;t match what you see on your iPhone, tell us which one so we can fix it.
@@ -71,6 +99,18 @@ export default async function PhoneGuidePage() {
         </p>
       </div>
 
+      {easy && (
+        <div className={card}>
+          <p className="font-medium">Phone last checked in</p>
+          <p className="mt-1 text-sm text-muted">
+            {lastCheckIn
+              ? new Date(lastCheckIn).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Phoenix" })
+              : "Not yet. This updates when your phone sends its first text."}
+            {" "}This shows your phone is working even when the text was from someone not on your list, which Tapd In doesn&apos;t keep.
+          </p>
+        </div>
+      )}
+
       <div className={card}>
         <p className="font-medium">Your private address</p>
         <div className="mt-4">
@@ -79,7 +119,7 @@ export default async function PhoneGuidePage() {
       </div>
 
       <ol className="mt-10 flex flex-col gap-4">
-        {steps.map((step, i) => (
+        {guide.map((step, i) => (
           <li key={step.title} className="flex gap-5 rounded-3xl border border-line bg-card p-6">
             <span className="font-display text-4xl italic text-accent/40">{String(i + 1).padStart(2, "0")}</span>
             <div>
@@ -93,8 +133,9 @@ export default async function PhoneGuidePage() {
       <section className="mt-12">
         <h2 className="text-lg font-semibold tracking-tight">When someone new texts you</h2>
         <p className="mt-3 text-muted">
-          Save them in your Contacts, then open the automation in Shortcuts, tap the top section, and add them as a Sender. After their
-          first text arrives, tap Name this number in your briefing. Texts only come through from the people picked in the automation.
+          {easy
+            ? "Add them to the list in Settings, with their name and number. That's all: their next text will show up in your briefing, and nothing on your phone needs to change. Texts from anyone not on the list are discarded."
+            : "Save them in your Contacts, then open the automation in Shortcuts, tap the top section, and add them as a Sender. After their first text arrives, tap Name this number in your briefing. Texts only come through from the people picked in the automation."}
         </p>
       </section>
 

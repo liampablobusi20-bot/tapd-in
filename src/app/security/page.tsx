@@ -71,8 +71,9 @@ export default function SecurityPage() {
                 message you already answered doesn&apos;t show as waiting.
               </>,
               <>
-                <strong className="font-medium text-ink">Texts from people you pick.</strong> Your iPhone sends only those people&apos;s texts. Everyone
-                else&apos;s stay on your phone.
+                <strong className="font-medium text-ink">Texts from people you pick.</strong> By default your iPhone sends only those people&apos;s texts, and
+                everyone else&apos;s stay on your phone. If you choose &quot;easy mode&quot; instead, your phone sends every text and we immediately
+                discard any that aren&apos;t from someone on your list: not saved, not summarized, not sent to the AI.
               </>,
               <>
                 <strong className="font-medium text-ink">Your calendar, only if you turn on meeting briefs.</strong> Titles, times, and attendees of

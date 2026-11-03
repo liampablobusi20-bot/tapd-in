@@ -10,6 +10,7 @@ import { formatPhone } from "@/lib/inbox/texts";
 import { DeleteDataForm } from "../delete-data";
 import { TwoStepCard } from "../two-step";
 import { BillingCard } from "../billing-card";
+import { TextsModeCard } from "../texts-mode";
 import { getConfig } from "@/lib/inbox/config-store";
 import { trialState } from "@/lib/inbox/trial";
 import { billingConfigured } from "@/lib/billing/stripe";
@@ -210,9 +211,17 @@ export default async function SettingsPage({
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Text messages</h2>
         <p className="mt-1.5 max-w-lg text-muted">
-          Choose the people whose texts count as business on your iPhone. Only their texts are ever sent. Everyone else&apos;s stay on your
-          phone. Add their names here so they show up by name.
+          {config.textsMode === "easy"
+            ? "Choose the people whose texts count as business. Your iPhone sends every text, and Tapd In keeps only the ones from the people on this list. Everything else is discarded the moment it arrives."
+            : "Choose the people whose texts count as business on your iPhone. Only their texts are ever sent. Everyone else's stay on your phone. Add their names here so they show up by name."}
         </p>
+
+        <div className={card}>
+          <p className="font-medium">How texts are sent</p>
+          <div className="mt-4">
+            <TextsModeCard mode={config.textsMode} />
+          </div>
+        </div>
 
         <div className={card}>
           <p className="font-medium">People whose texts count</p>
@@ -227,21 +236,23 @@ export default async function SettingsPage({
               </li>
             ))}
             {contacts?.length === 0 && (
-              <li className="text-sm text-muted">No one yet. Nothing is sent until you add someone.</li>
+              <li className="text-sm text-muted">
+                {config.textsMode === "easy" ? "No one yet. Nothing is kept until you add someone." : "No one yet. Nothing is sent until you add someone."}
+              </li>
             )}
           </ul>
           <ContactForm />
         </div>
 
-        {profile?.text_suggestions && (
+        {(profile?.text_suggestions || config.textsMode === "easy") && (
         <div className={card}>
           <div className="flex items-start justify-between gap-5">
             <div>
-              <p className="font-medium">Suggest new numbers</p>
+              <p className="font-medium">{config.textsMode === "easy" ? "Offer new numbers" : "Suggest new numbers"}</p>
               <p className="mt-1 max-w-md text-sm leading-relaxed text-muted">
-                Off by default. When it&apos;s on, your phone tells Tapd In the phone number, never the message, of anyone not on your
-                list who texts you, so you can tap Add or Ignore. That means Tapd In will see the numbers of people who text you,
-                including friends and family, though never what they say.
+                {config.textsMode === "easy"
+                  ? "Off by default. When it's on, Tapd In keeps the phone number, never the message, of anyone not on your list who texts you, so you can tap Add or Ignore. Everything else about those texts is still discarded. That does mean we keep the numbers of people who text you, including friends and family."
+                  : "Off by default. When it's on, your phone tells Tapd In the phone number, never the message, of anyone not on your list who texts you, so you can tap Add or Ignore. That means Tapd In will see the numbers of people who text you, including friends and family, though never what they say."}
               </p>
             </div>
             <SuggestionsToggle on={Boolean(profile?.text_suggestions)} />
