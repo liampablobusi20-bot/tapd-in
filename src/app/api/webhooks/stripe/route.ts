@@ -16,7 +16,14 @@ export async function POST(request: Request) {
   let event;
   try {
     event = stripeClient().webhooks.constructEvent(body, signature, secret);
-  } catch {
+  } catch (err) {
+    // Say why, and what shape the stored secret has, so a setup mistake can be found. Never the secret itself.
+    console.error("Stripe signature check failed:", err instanceof Error ? err.message : "unknown error", {
+      secretStartsWithWhsec: secret.startsWith("whsec_"),
+      secretLength: secret.length,
+      secretHasWhitespaceOrQuotes: /[\s"']/.test(secret),
+      signatureHeaderLooksRight: /^t=\d+,/.test(signature),
+    });
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
