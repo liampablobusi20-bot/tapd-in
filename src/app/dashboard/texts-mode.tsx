@@ -40,7 +40,7 @@ export function TextsModeCard({ mode }: { mode: "private" | "easy" }) {
           <p className="font-medium">Easy mode{mode === "easy" && <span className="ml-2 text-xs font-normal text-accent">Current</span>}</p>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">
             Your iPhone sends every text, and Tapd In immediately discards any that aren&apos;t from someone on your list. Add someone below and it works
-            straight away, with nothing to change on your phone.
+            straight away, with nothing to change on your phone. A small Shortcuts banner may appear for every text you receive, not only business ones.
           </p>
         </div>
       </div>
@@ -52,6 +52,7 @@ export function TextsModeCard({ mode }: { mode: "private" | "easy" }) {
             <li>It is not saved, not summarized, and not sent to the AI.</li>
             <li>We don&apos;t keep who sent it. (Unless you turn on &quot;Offer new numbers&quot; below, which keeps only the number, never the message.)</li>
             <li>It passes through our server for a moment and is then gone.</li>
+            <li>Your iPhone may show a small &quot;Shortcut ran&quot; banner for every text, including personal ones. It can&apos;t always be hidden. If that gets annoying, switch back to private mode.</li>
           </ul>
           <button
             type="button"
@@ -77,6 +78,10 @@ export function TextsModeCard({ mode }: { mode: "private" | "easy" }) {
             In easy mode your iPhone sends <strong className="font-medium text-ink">every</strong> text it receives to Tapd In, including personal ones.
             Tapd In immediately discards any that aren&apos;t from someone on your list. It doesn&apos;t save them, summarize them, or send them to the AI.
             Only texts from the people you add here are ever kept.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-muted">
+            One thing to know: your iPhone may show a small &quot;Shortcut ran&quot; banner for <strong className="font-medium text-ink">every</strong> text you get, not only business
+            ones, and Apple doesn&apos;t always let it be hidden. If that gets annoying, you can switch back to private mode at any time.
           </p>
           <label className="mt-4 flex items-start gap-3 text-sm">
             <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-line accent-[var(--color-accent)]" />

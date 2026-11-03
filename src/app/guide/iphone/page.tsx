@@ -77,7 +77,8 @@ export default function IphoneCheatSheetPage() {
             <p className="mt-1 text-sm leading-relaxed text-muted print:text-xs">
               Prefer not to edit the automation when you add someone? In Tapd In choose <em>Settings → How texts are sent → Easy mode</em>, and in step 4 leave
               Sender empty. Your phone then sends every text, and Tapd In immediately discards any that aren&apos;t from the people on your list. Add someone in
-              Settings and it works straight away.
+              Settings and it works straight away. The catch: your iPhone may show a small Shortcuts banner for every text, including personal ones, and it
+              can&apos;t always be hidden. If that gets annoying, switch back to private mode.
             </p>
           </section>
           <section className="rounded-2xl border border-line bg-card px-5 py-4 sm:col-span-2 print:break-inside-avoid print:rounded-lg print:px-3 print:py-2">
