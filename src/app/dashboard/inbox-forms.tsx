@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { addCategory, deleteCategory, deleteInboxMessage, markDelivered, resolveWaiting, sendTestDigest, updateName } from "@/lib/actions/inbox";
+import { addCategory, addSuggestedTopics, deleteCategory, deleteInboxMessage, markDelivered, resolveWaiting, sendTestDigest, updateName } from "@/lib/actions/inbox";
 import { PendingButton, Spinner } from "@/components/pending-button";
 import { btnPrimary, btnSecondary, field } from "@/components/ui";
 
@@ -158,6 +158,21 @@ export function GotItButton({ id }: { id: string }) {
     >
       {pending && <Spinner className="h-3 w-3" />}
       Got it
+    </button>
+  );
+}
+
+export function SuggestedTopicsButton() {
+  const [pending, start] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => start(() => addSuggestedTopics())}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-ink underline underline-offset-4 transition-opacity hover:opacity-70 disabled:opacity-50"
+    >
+      {pending && <Spinner className="h-3 w-3" />}
+      Add suggested topics
     </button>
   );
 }

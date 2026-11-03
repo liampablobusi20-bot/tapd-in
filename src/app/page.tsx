@@ -193,6 +193,9 @@ export default async function Home() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 text-sm text-muted">
           <span>&copy; 2026 Tapd In</span>
           <div className="flex gap-6">
+            <Link href="/security" className="transition-colors hover:text-ink">
+              Security
+            </Link>
             <Link href="/guide" className="transition-colors hover:text-ink">
               Setup guide
             </Link>

@@ -4,6 +4,7 @@ import { processPending } from "@/lib/inbox/process";
 import { syncAllMicrosoft } from "@/lib/inbox/microsoft-sync";
 import { lastFullWeek } from "@/lib/inbox/digest";
 import { sendDigest } from "@/lib/inbox/send-digest";
+import { runHealthCheck } from "@/lib/inbox/health-check";
 
 export const maxDuration = 300;
 
@@ -12,6 +13,7 @@ export const maxDuration = 300;
 //   ?job=sync     read new mail from connected Microsoft mailboxes, then sort it
 //   ?job=process  safety net: sort anything still waiting
 //   ?job=digest   Monday morning: send last week's update to every inbox owner
+//   ?job=health   every 15 minutes: email the administrator if something is wrong
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
@@ -41,6 +43,10 @@ export async function GET(request: Request) {
       results[await sendDigest(owner.id, week, week.weekStart)]++;
     }
     return NextResponse.json(results);
+  }
+
+  if (job === "health") {
+    return NextResponse.json(await runHealthCheck());
   }
 
   return NextResponse.json({ error: "Unknown job" }, { status: 400 });

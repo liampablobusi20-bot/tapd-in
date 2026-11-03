@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { btnPrimary, eyebrow } from "@/components/ui";
+import { eyebrow } from "@/components/ui";
 import { formatPhone, isNumberLabel, replyLink } from "@/lib/inbox/texts";
 import { groupConversations } from "@/lib/inbox/conversations";
 import { personKey } from "@/lib/inbox/people";
 import { ConversationButton, NameNumber } from "./texts-forms";
 import { DoneButton, GotItButton, RemoveButton, TestDigestButton } from "./inbox-forms";
 import { MeetingBriefs } from "./meeting-briefs";
+import { SetupChecklist } from "./setup-checklist";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { buildBriefs } from "@/lib/inbox/briefs";
 import { upcomingMeetings } from "@/lib/inbox/microsoft-sync";
 import { nudgeLink, owedLabel, owedState, phoenixToday, worthSurfacing } from "@/lib/inbox/owed";
@@ -153,7 +155,16 @@ export default async function BriefingPage() {
   const waitingSelect =
     "id, source, sender_name, sender_address, subject, summary, importance, status, category_id, received_at, needs_reply, resolved_at, answered_at";
   const promiseSelect = "id, source, sender_name, sender_address, subject, received_at, promise, promise_due, promise_resolved_at";
-  const [{ data: profile }, { data: categories }, { data: rows }, { count: newNumbers }, { data: owed }, { data: promised }] = await Promise.all([
+  const [
+    { data: profile },
+    { data: categories },
+    { data: rows },
+    { count: newNumbers },
+    { data: owed },
+    { data: promised },
+    { data: connections },
+    { count: contactCount },
+  ] = await Promise.all([
     supabase.from("users").select("display_name").eq("id", user.id).single(),
     supabase.from("inbox_categories").select("id, name").order("sort_order", { ascending: true }),
     supabase
@@ -184,7 +195,12 @@ export default async function BriefingPage() {
       .gte("received_at", thirtyDaysAgo())
       .order("promise_due", { ascending: true, nullsFirst: false })
       .limit(100),
+    // The sign-in tokens live in this table, so it is read here on the server, for this owner only.
+    createAdminClient().from("inbox_connections").select("status").eq("owner_id", user.id),
+    supabase.from("inbox_text_contacts").select("id", { count: "exact", head: true }),
   ]);
+  const needsReconnect = (connections ?? []).some((c) => c.status === "needs_reconnect");
+  const hasConnection = (connections ?? []).some((c) => c.status === "active");
   // Meetings come from the calendar only if the owner switched meeting briefs on.
   // Each is matched against the last 60 days of what people said.
   const { events, ownAddresses } = await upcomingMeetings(user.id);
@@ -235,6 +251,15 @@ export default async function BriefingPage() {
         <TestDigestButton />
       </div>
 
+      {needsReconnect && (
+        <a
+          href="/api/connect/microsoft/start"
+          className="mt-6 block rounded-2xl bg-alert-soft px-5 py-3 text-sm font-medium text-alert"
+        >
+          Outlook needs to be reconnected, so no new mail is being read. Reconnect →
+        </a>
+      )}
+
       {(newNumbers ?? 0) > 0 && (
         <Link
           href="/dashboard/settings"
@@ -262,16 +287,7 @@ export default async function BriefingPage() {
       )}
 
       {shown.length === 0 && waiting.length === 0 && owedToYou.length === 0 ? (
-        <div className="mt-14 rounded-3xl border border-line bg-card p-8 sm:p-12">
-          <h2 className="font-display text-3xl tracking-tight">Nothing here yet.</h2>
-          <p className="mt-3 max-w-md leading-relaxed text-muted">
-            Set up your topics, then forward an email to your private address. It will show up here, sorted
-            and summarized, within a minute.
-          </p>
-          <Link href="/dashboard/settings" className={`${btnPrimary} mt-8`}>
-            Set up your inbox
-          </Link>
-        </div>
+        <SetupChecklist connected={hasConnection} topics={(categories ?? []).length > 0} texts={(contactCount ?? 0) > 0} />
       ) : (
         <div className="mt-12 flex flex-col gap-12">
           <MeetingBriefs briefs={meetings} now={nowMs()} />

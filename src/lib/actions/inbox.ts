@@ -50,6 +50,31 @@ export async function addCategory(formData: FormData) {
   revalidatePath("/dashboard/settings");
 }
 
+// A starting set of topics for someone who hasn't made any, so the first
+// briefing is sorted from the start. They can rename or remove them in Settings.
+const SUGGESTED_TOPICS = [
+  { name: "Clients", description: "Customers and prospects: orders, quotes, contracts, and project questions." },
+  { name: "Team", description: "Employees, coworkers, and internal scheduling." },
+  { name: "Vendors", description: "Suppliers, subcontractors, deliveries, and vendor invoices." },
+  { name: "Finance & legal", description: "Banking, accounting, insurance, taxes, and legal matters." },
+];
+
+export async function addSuggestedTopics() {
+  const { supabase, user } = await requireInboxOwner();
+  const { count } = await supabase
+    .from("inbox_categories")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", user.id);
+  // Only for someone with none, so pressing it twice never doubles them up.
+  if ((count ?? 0) > 0) return;
+  const { error } = await supabase
+    .from("inbox_categories")
+    .insert(SUGGESTED_TOPICS.map((t, i) => ({ owner_id: user.id, name: t.name, description: t.description, sort_order: i })));
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
+}
+
 export async function deleteCategory(id: string) {
   const { supabase, user } = await requireInboxOwner();
   const { error } = await supabase
