@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { composeDigest } from "@/lib/inbox/digest";
 import { logActivity } from "@/lib/inbox/activity-log";
+import { getConfig } from "@/lib/inbox/config-store";
 import { owedState, phoenixToday, worthSurfacing } from "@/lib/inbox/owed";
 
 // Sends one owner's update for a window. With a weekKey it is sent at most once
@@ -76,6 +77,7 @@ export async function sendDigest(
       .lt("received_at", window.endIso)
       .limit(100),
   ]);
+  const features = (await getConfig(ownerId)).features;
   const asOfDay = phoenixToday(Date.parse(window.endIso));
   const dueSoon = (promised ?? []).flatMap((p) => {
     if (!p.promise) return [];
@@ -90,10 +92,10 @@ export async function sendDigest(
     messages: (messages ?? []).flatMap((m) =>
       m.summary && m.importance ? [{ ...m, summary: m.summary, importance: m.importance }] : []
     ),
-    waiting: (owed ?? []).flatMap((m) =>
+    waiting: (features.waitingOnYou ? owed ?? [] : []).flatMap((m) =>
       m.summary && m.importance ? [{ ...m, summary: m.summary, importance: m.importance }] : []
     ),
-    owed: dueSoon,
+    owed: features.owedToYou ? dueSoon : [],
     weekStart: window.startIso,
     weekEnd: window.endIso,
     appUrl: site ? `${site}/dashboard` : undefined,

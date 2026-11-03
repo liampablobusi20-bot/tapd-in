@@ -7,6 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { adminEmails, isAdmin } from "@/lib/admin";
 import { sendEmail } from "@/lib/email";
 import { logActivity } from "@/lib/inbox/activity-log";
+import { applyConfigPatch, revertConfig } from "@/lib/inbox/config-store";
+import { newTrialEnd } from "@/lib/inbox/trial";
 
 // Every admin action starts here. Anyone who isn't the administrator gets a 404.
 export async function requireAdmin() {
@@ -18,12 +20,60 @@ export async function requireAdmin() {
   return user;
 }
 
-// Switches a person's inbox on or off, in place of running SQL by hand.
+// Switches a person's inbox on or off, in place of running SQL by hand. Switching someone on
+// for the first time starts their free trial. Someone who already has a trial, or is paying, keeps it.
 export async function setInboxEnabled(userId: string, enabled: boolean) {
   await requireAdmin();
-  const { error } = await createAdminClient().from("users").update({ inbox_enabled: enabled }).eq("id", userId);
+  const admin = createAdminClient();
+  const update: Record<string, unknown> = { inbox_enabled: enabled };
+  if (enabled) {
+    const { data: u } = await admin.from("users").select("subscription_status, trial_ends_at").eq("id", userId).maybeSingle();
+    if (u && u.subscription_status === "trialing" && !u.trial_ends_at) update.trial_ends_at = newTrialEnd(Date.now());
+  }
+  const { error } = await admin.from("users").update(update).eq("id", userId);
   if (error) throw new Error(error.message);
   revalidatePath("/admin");
+}
+
+export type ConfigResult = { ok: true; changes: string[] } | { ok: false; errors: string[] };
+
+const lines = (value: FormDataEntryValue | null) =>
+  String(value ?? "")
+    .split(/\r?\n|,/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+// Saves the settings form for one account. Only that account is touched.
+export async function saveAccountConfig(userId: string, formData: FormData): Promise<ConfigResult> {
+  const admin = await requireAdmin();
+  const flag = (name: string) => formData.get(name) === "on";
+  const patch = {
+    triageNotes: String(formData.get("triageNotes") ?? ""),
+    alwaysUrgent: lines(formData.get("alwaysUrgent")),
+    ignoreSenders: lines(formData.get("ignoreSenders")),
+    summaryStyle: String(formData.get("summaryStyle") ?? "normal"),
+    urgentVipOnly: flag("urgentVipOnly"),
+    quietFromHour: Number(formData.get("quietFromHour")),
+    quietUntilHour: Number(formData.get("quietUntilHour")),
+    features: {
+      people: flag("feat_people"),
+      meetingBriefs: flag("feat_meetingBriefs"),
+      urgentAlerts: flag("feat_urgentAlerts"),
+      texts: flag("feat_texts"),
+      waitingOnYou: flag("feat_waitingOnYou"),
+      owedToYou: flag("feat_owedToYou"),
+    },
+  };
+  const result = await applyConfigPatch(userId, patch, admin.email ?? "admin", String(formData.get("note") ?? "").trim() || null);
+  revalidatePath(`/admin/accounts/${userId}`);
+  return result;
+}
+
+export async function revertAccountConfig(userId: string, historyId: string): Promise<ConfigResult> {
+  const admin = await requireAdmin();
+  const result = await revertConfig(userId, historyId, admin.email ?? "admin");
+  revalidatePath(`/admin/accounts/${userId}`);
+  return result;
 }
 
 // Proves the alert emails reach the administrator, without waiting for a real problem.

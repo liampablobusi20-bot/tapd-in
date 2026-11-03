@@ -2,6 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { formatPhone, isNumberLabel } from "@/lib/inbox/texts";
 import { URGENT_LOOKBACK_MS, composeUrgentEmail, inQuietHours, type UrgentItem } from "@/lib/inbox/urgent-logic";
+import { getConfigs } from "@/lib/inbox/config-store";
+import { senderMatches } from "@/lib/inbox/config";
+import { pausedOwnerIds } from "@/lib/inbox/access";
 
 export type UrgentResult = { owners: number; emails: number; messages: number; quiet: boolean };
 
@@ -21,7 +24,6 @@ const senderLabel = (m: Row) =>
 // everything that's new bundled into a single email. Only summaries are sent.
 export async function sendUrgentAlerts(nowMs = Date.now()): Promise<UrgentResult> {
   const result: UrgentResult = { owners: 0, emails: 0, messages: 0, quiet: false };
-  if (inQuietHours(nowMs)) return { ...result, quiet: true };
 
   const admin = createAdminClient();
   const { data: owners } = await admin
@@ -32,10 +34,20 @@ export async function sendUrgentAlerts(nowMs = Date.now()): Promise<UrgentResult
     .limit(500);
   if (!owners?.length) return result;
 
+  // Each person's own rules: their quiet hours, whether alerts are allowed for them at all, and
+  // whether only their always-urgent senders count. Paused accounts get nothing.
+  const configs = await getConfigs(owners.map((o) => o.id));
+  const paused = await pausedOwnerIds(owners.map((o) => o.id), nowMs);
+  const active = owners.filter((o) => {
+    const c = configs.get(o.id)!;
+    return !paused.has(o.id) && c.features.urgentAlerts && !inQuietHours(nowMs, c.quietFromHour, c.quietUntilHour);
+  });
+  if (active.length === 0) return { ...result, quiet: owners.length > 0 };
+
   const { data: rows } = await admin
     .from("inbox_messages")
     .select("id, owner_id, source, sender_name, sender_address, summary")
-    .in("owner_id", owners.map((o) => o.id))
+    .in("owner_id", active.map((o) => o.id))
     .eq("status", "processed")
     .eq("importance", "urgent")
     .is("alerted_at", null)
@@ -44,8 +56,14 @@ export async function sendUrgentAlerts(nowMs = Date.now()): Promise<UrgentResult
     .limit(300);
 
   const site = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  for (const owner of owners) {
-    const mine = (rows ?? []).filter((r) => r.owner_id === owner.id && r.summary);
+  for (const owner of active) {
+    const config = configs.get(owner.id)!;
+    const mine = (rows ?? []).filter(
+      (r) =>
+        r.owner_id === owner.id &&
+        r.summary &&
+        (!config.urgentVipOnly || senderMatches(config.alwaysUrgent, { name: r.sender_name, address: r.sender_address }))
+    );
     if (mine.length === 0) continue;
 
     // Claim them first, so two overlapping runs never send the same alert twice.

@@ -17,6 +17,11 @@ export type ActivityEvent =
   | "phone_key_revoked"
   | "retention_changed"
   | "urgent_alerts_on"
+  | "settings_adjusted"
+  | "subscription_started"
+  | "payment_failed"
+  | "subscription_ended"
+  | "trial_changed"
   | "urgent_alerts_off"
   | "data_deleted"
   | "weekly_email_sent";
@@ -38,6 +43,11 @@ const WORDS: Record<ActivityEvent, string> = {
   phone_key_revoked: "A phone key was revoked",
   retention_changed: "Keep-summaries setting changed",
   urgent_alerts_on: "Urgent alerts turned on",
+  settings_adjusted: "Your settings were adjusted by Tapd In",
+  subscription_started: "Subscription started",
+  payment_failed: "A payment failed",
+  subscription_ended: "Subscription ended",
+  trial_changed: "Trial updated by Tapd In",
   urgent_alerts_off: "Urgent alerts turned off",
   data_deleted: "All message data was deleted",
   weekly_email_sent: "Briefing emailed",

@@ -30,6 +30,8 @@ export type HealthSnapshot = {
   newSignups: { id: string; email: string }[];
   // People who normally get texts but haven't for a week: the iPhone automation may have stopped.
   quietTexts: { id: string; email: string; weekKey: string }[];
+  // Accounts whose trial or payment needs a decision from the administrator.
+  accessIssues: { id: string; email: string; kind: "ending" | "ended" | "paused" | "payment_issue"; daysLeft?: number; day: string }[];
 };
 
 export type HealthAlert = { key: string; level: "problem" | "info"; title: string; detail: string };
@@ -96,6 +98,19 @@ export function evaluateHealth(s: HealthSnapshot): HealthAlert[] {
       title: `${q.email} hasn't had a text in a week, but usually does`,
       detail: "Their iPhone automation may have stopped (a phone update or a turned-off automation can do it). Worth a quick check with them.",
     });
+  }
+
+  for (const a of s.accessIssues) {
+    const who = a.email;
+    const days = a.daysLeft === undefined ? "" : ` (${a.daysLeft} ${a.daysLeft === 1 ? "day" : "days"})`;
+    if (a.kind === "ending")
+      alerts.push({ key: `trial-ending:${a.id}:${a.day}`, level: "info", title: `${who}'s trial ends soon${days} and there's no card on file`, detail: "Talk to them about continuing, send a payment link from their account page, or extend the trial." });
+    if (a.kind === "ended")
+      alerts.push({ key: `trial-ended:${a.id}:${a.day}`, level: "info", title: `${who}'s trial has ended${days ? `, grace period${days}` : ""}`, detail: "They'll be paused when the grace period ends unless they subscribe or you extend them." });
+    if (a.kind === "payment_issue")
+      alerts.push({ key: `payment-issue:${a.id}:${a.day}`, level: "info", title: `${who}'s payment failed${days}`, detail: "They've been told to update their card. They pause if it isn't fixed in time." });
+    if (a.kind === "paused")
+      alerts.push({ key: `paused:${a.id}:${a.day}`, level: "info", title: `${who} is paused`, detail: "Nothing is being read or emailed for them. Resume or mark them as paying from their account page." });
   }
 
   for (const user of s.newSignups) {

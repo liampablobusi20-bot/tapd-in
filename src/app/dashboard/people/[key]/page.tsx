@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getConfig } from "@/lib/inbox/config-store";
 import { eyebrow } from "@/components/ui";
 import { formatPhone, replyLink } from "@/lib/inbox/texts";
 import { messagesFor, isWaiting, groupPeople, type PersonMessage } from "@/lib/inbox/people";
@@ -27,6 +28,7 @@ export default async function PersonPage({ params }: { params: Promise<{ key: st
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  if (!(await getConfig(user.id)).features.people) redirect("/dashboard");
 
   const { data } = await supabase
     .from("inbox_messages")

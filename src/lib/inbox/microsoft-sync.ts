@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { ingestMessage } from "@/lib/inbox/process";
+import { pausedOwnerIds } from "@/lib/inbox/access";
 import {
   CALENDAR_SCOPES,
   CalendarAccessError,
@@ -102,7 +103,9 @@ export async function syncAllMicrosoft(): Promise<{ connections: number; message
     .limit(200);
 
   const tally = { connections: 0, messages: 0, failed: 0 };
+  const paused = await pausedOwnerIds([...new Set((data ?? []).map((c) => c.owner_id))]);
   for (const conn of data ?? []) {
+    if (paused.has(conn.owner_id)) continue;
     tally.connections++;
     try {
       tally.messages += await syncConnection(conn);

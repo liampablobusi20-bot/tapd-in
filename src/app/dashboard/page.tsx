@@ -8,6 +8,7 @@ import { personKey } from "@/lib/inbox/people";
 import { ConversationButton, NameNumber } from "./texts-forms";
 import { DoneButton, GotItButton, RemoveButton, TestDigestButton } from "./inbox-forms";
 import { MeetingBriefs } from "./meeting-briefs";
+import { getConfig } from "@/lib/inbox/config-store";
 import { SetupChecklist } from "./setup-checklist";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildBriefs } from "@/lib/inbox/briefs";
@@ -203,7 +204,8 @@ export default async function BriefingPage() {
   const hasConnection = (connections ?? []).some((c) => c.status === "active");
   // Meetings come from the calendar only if the owner switched meeting briefs on.
   // Each is matched against the last 60 days of what people said.
-  const { events, ownAddresses } = await upcomingMeetings(user.id);
+  const config = await getConfig(user.id);
+  const { events, ownAddresses } = config.features.meetingBriefs ? await upcomingMeetings(user.id) : { events: [], ownAddresses: [] as string[] };
   let meetings: ReturnType<typeof buildBriefs> = [];
   if (events.length > 0) {
     const { data: history } = await supabase
@@ -216,7 +218,7 @@ export default async function BriefingPage() {
     meetings = buildBriefs(events, (history ?? []) as Message[], ownAddresses);
   }
   const today = phoenixToday();
-  const owedToYou = ((promised ?? []) as Message[])
+  const owedToYou = ((config.features.owedToYou ? promised : []) as Message[] | null ?? [])
     .filter((m) => worthSurfacing(owedState(m.promise_due, today)))
     .sort((a, b) => (a.promise_due ?? "").localeCompare(b.promise_due ?? ""));
 
@@ -224,7 +226,7 @@ export default async function BriefingPage() {
   // Low-importance email stays out of the way. Texts are always shown, because they
   // only come from people the owner chose.
   const shown = messages.filter((m) => m.importance !== "low" || m.status !== "processed" || m.source === "sms");
-  const waiting = ((owed ?? []) as Message[]).filter((m) => m.status === "processed");
+  const waiting = ((config.features.waitingOnYou ? owed : []) as Message[] | null ?? []).filter((m) => m.status === "processed");
   const waitingIds = new Set(waiting.map((m) => m.id));
   const urgent = shown.filter((m) => m.importance === "urgent" && !waitingIds.has(m.id));
   const convos = groupConversations(shown.filter((m) => m.source === "sms" && m.status === "processed"));

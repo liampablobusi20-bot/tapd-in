@@ -10,11 +10,11 @@ const links = [
 ];
 
 // The page you're on is darker and underlined, so you always know where you are.
-export function NavLinks() {
+export function NavLinks({ showPeople = true }: { showPeople?: boolean }) {
   const pathname = usePathname();
   return (
     <>
-      {links.map(({ href, label }) => {
+      {links.filter((l) => showPeople || l.href !== "/dashboard/people").map(({ href, label }) => {
         const active = href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
         return (
           <Link

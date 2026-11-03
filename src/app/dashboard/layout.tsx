@@ -2,6 +2,12 @@ import { logout } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Wordmark, btnSecondary, eyebrow } from "@/components/ui";
 import { NavLinks } from "./nav-links";
+import { getConfig } from "@/lib/inbox/config-store";
+import { trialState } from "@/lib/inbox/trial";
+import { billingConfigured } from "@/lib/billing/stripe";
+import { PausedScreen, TrialBanner } from "./trial-notices";
+
+const nowMs = () => Date.now();
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -10,9 +16,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   } = await supabase.auth.getUser();
 
   const { data: profile } = user
-    ? await supabase.from("users").select("inbox_enabled").eq("id", user.id).single()
+    ? await supabase
+        .from("users")
+        .select("inbox_enabled, subscription_status, trial_ends_at, stripe_subscription_id, stripe_customer_id, billing_issue_at, monthly_price_cents")
+        .eq("id", user.id)
+        .single()
     : { data: null };
   const enabled = Boolean(profile?.inbox_enabled);
+  const state = trialState(profile ?? {}, nowMs());
+  const config = user && enabled ? await getConfig(user.id) : null;
+  const billing = billingConfigured();
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -20,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-5">
           <Wordmark href="/dashboard" />
           <nav className="flex items-center gap-6 text-sm">
-            {enabled && <NavLinks />}
+            {enabled && state.state !== "paused" && <NavLinks showPeople={config?.features.people ?? true} />}
             <form action={logout}>
               <button type="submit" className="text-muted transition-colors hover:text-ink">
                 Log out
@@ -30,8 +43,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </header>
 
+      {enabled && <TrialBanner state={state} billing={billing} />}
+
       <main className="flex-1">
-        {enabled ? (
+        {enabled && state.state === "paused" ? (
+          <PausedScreen reason={state.reason} billing={billing} canPay={Boolean(profile?.monthly_price_cents)} hasCustomer={Boolean(profile?.stripe_customer_id)} />
+        ) : enabled ? (
           children
         ) : (
           <div className="mx-auto max-w-xl px-6 py-24 text-center">

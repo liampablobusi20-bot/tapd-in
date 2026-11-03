@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { adminEmails } from "@/lib/admin";
 import { sendEmail } from "@/lib/email";
 import { lastFullWeek } from "@/lib/inbox/digest";
+import { trialState } from "@/lib/inbox/trial";
 import { sendDigest } from "@/lib/inbox/send-digest";
 import {
   PENDING_TOO_LONG_MS,
@@ -38,11 +39,20 @@ export async function gatherSnapshot(nowMs: number): Promise<HealthSnapshot> {
       .gte("created_at", iso(nowMs - 24 * 3_600_000)),
     // Only who and when, never any text.
     admin.from("inbox_messages").select("owner_id, received_at").eq("source", "sms").gte("received_at", iso(nowMs - 28 * 86_400_000)).limit(20000),
-    admin.from("users").select("id, email").eq("inbox_enabled", true),
+    admin.from("users").select("id, email, subscription_status, trial_ends_at, stripe_subscription_id, billing_issue_at").eq("inbox_enabled", true),
   ]);
 
   const quietIds = new Set(quietTextOwners(texts ?? [], nowMs));
   const weekKey = new Date(nowMs - ((new Date(nowMs).getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
+  const accessIssues: HealthSnapshot["accessIssues"] = [];
+  for (const u of enabledUsers ?? []) {
+    const st = trialState(u, nowMs);
+    const day = new Date(nowMs).toISOString().slice(0, 10);
+    if (st.state === "trial" && !st.cardOnFile && st.daysLeft <= 3) accessIssues.push({ id: u.id, email: u.email, kind: "ending", daysLeft: st.daysLeft, day: st.endsAt.slice(0, 10) });
+    if (st.state === "grace") accessIssues.push({ id: u.id, email: u.email, kind: "ended", daysLeft: st.daysLeft, day: st.endsAt.slice(0, 10) });
+    if (st.state === "payment_issue") accessIssues.push({ id: u.id, email: u.email, kind: "payment_issue", daysLeft: st.daysLeft, day: (u.billing_issue_at ?? day).slice(0, 10) });
+    if (st.state === "paused") accessIssues.push({ id: u.id, email: u.email, kind: "paused", day: (u.trial_ends_at ?? day).slice(0, 10) });
+  }
   const quietTexts = (enabledUsers ?? []).filter((u) => quietIds.has(u.id)).map((u) => ({ id: u.id, email: u.email, weekKey }));
 
   let digest: HealthSnapshot["digest"] = null;
@@ -78,6 +88,7 @@ export async function gatherSnapshot(nowMs: number): Promise<HealthSnapshot> {
     digest,
     newSignups: (signups ?? []).map((u) => ({ id: u.id, email: u.email })),
     quietTexts,
+    accessIssues,
   };
 }
 

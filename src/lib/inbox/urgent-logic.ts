@@ -10,9 +10,12 @@ export const QUIET_UNTIL_HOUR = 6;
 export const URGENT_LOOKBACK_MS = 24 * HOUR_MS;
 export const MAX_LISTED = 5;
 
-export function inQuietHours(nowMs: number): boolean {
+// A window that wraps midnight (22 to 6) or sits within one day (0 to 6). If the two hours are
+// the same there are no quiet hours at all.
+export function inQuietHours(nowMs: number, from: number = QUIET_FROM_HOUR, until: number = QUIET_UNTIL_HOUR): boolean {
   const hour = new Date(nowMs - PHOENIX_OFFSET_MS).getUTCHours();
-  return hour >= QUIET_FROM_HOUR || hour < QUIET_UNTIL_HOUR;
+  if (from === until) return false;
+  return from > until ? hour >= from || hour < until : hour >= from && hour < until;
 }
 
 export type UrgentItem = { sender: string; via: "email" | "text"; summary: string };

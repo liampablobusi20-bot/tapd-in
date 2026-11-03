@@ -3,6 +3,7 @@ import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ingestMessage, processPending } from "@/lib/inbox/process";
 import { ownerFromKey } from "@/lib/inbox/text-auth";
+import { getConfig } from "@/lib/inbox/config-store";
 import { normalizeHandle } from "@/lib/inbox/texts";
 
 export const maxDuration = 60;
@@ -16,6 +17,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ key
   const { key } = await params;
   const auth = await ownerFromKey(key);
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Texts switched off for this account: accept the call (so the phone doesn't keep retrying) and drop it.
+  if (!(await getConfig(auth.ownerId)).features.texts) return NextResponse.json({ ok: true, ignored: true });
 
   let from = "";
   let text = "";

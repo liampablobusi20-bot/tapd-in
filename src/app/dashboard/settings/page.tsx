@@ -9,6 +9,12 @@ import { ContactForm, KeyMaker, RemoveItem, SuggestionRow, SuggestionsToggle } f
 import { formatPhone } from "@/lib/inbox/texts";
 import { DeleteDataForm } from "../delete-data";
 import { TwoStepCard } from "../two-step";
+import { BillingCard } from "../billing-card";
+import { getConfig } from "@/lib/inbox/config-store";
+import { trialState } from "@/lib/inbox/trial";
+import { billingConfigured } from "@/lib/billing/stripe";
+
+const nowMs = () => Date.now();
 import { RetentionSelect, UrgentAlertsToggle } from "../retention-select";
 
 const CONNECT_ERRORS: Record<string, string> = {
@@ -48,7 +54,7 @@ export default async function SettingsPage({
     .order("created_at", { ascending: true });
 
   const [{ data: profile }, { data: categories }, { data: contacts }, { data: keys }, { data: suggestions }] = await Promise.all([
-    supabase.from("users").select("display_name, text_suggestions, retention_days, urgent_alerts").eq("id", user.id).single(),
+    supabase.from("users").select("display_name, text_suggestions, retention_days, urgent_alerts, subscription_status, trial_ends_at, stripe_subscription_id, stripe_customer_id, billing_issue_at, monthly_price_cents").eq("id", user.id).single(),
     supabase.from("inbox_categories").select("id, name, description").order("sort_order", { ascending: true }),
     supabase.from("inbox_text_contacts").select("id, name, handle").order("name", { ascending: true }),
     supabase
@@ -64,6 +70,8 @@ export default async function SettingsPage({
       .limit(50),
   ]);
 
+  const config = await getConfig(user.id);
+  const trial = trialState(profile ?? {}, nowMs());
   const { data: factors } = await supabase.auth.mfa.listFactors();
   const twoStepOn = (factors?.totp?.length ?? 0) > 0;
 
@@ -80,6 +88,14 @@ export default async function SettingsPage({
         </Link>
         .
       </p>
+
+      <BillingCard
+        state={trial}
+        priceCents={profile?.monthly_price_cents ?? null}
+        hasCustomer={Boolean(profile?.stripe_customer_id)}
+        billing={billingConfigured()}
+        card={card}
+      />
 
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Connect your email</h2>
@@ -143,7 +159,7 @@ export default async function SettingsPage({
         </div>
       </section>
 
-      {connections && connections.some((c) => c.status === "active") && (
+      {config.features.meetingBriefs && connections && connections.some((c) => c.status === "active") && (
         <section className="mt-14">
           <h2 className="text-lg font-semibold tracking-tight">Meeting briefs</h2>
           <p className="mt-1.5 max-w-lg text-muted">
@@ -190,6 +206,7 @@ export default async function SettingsPage({
         </div>
       </section>
 
+      {config.features.texts && (
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Text messages</h2>
         <p className="mt-1.5 max-w-lg text-muted">
@@ -284,7 +301,9 @@ export default async function SettingsPage({
         </div>
         </details>
       </section>
+      )}
 
+      {config.features.urgentAlerts && (
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Urgent alerts</h2>
         <div className={card}>
@@ -300,6 +319,7 @@ export default async function SettingsPage({
           </div>
         </div>
       </section>
+      )}
 
       <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Topics</h2>
@@ -361,7 +381,7 @@ export default async function SettingsPage({
           <div className={card}>
             <p className="max-w-md text-sm leading-relaxed text-muted">
               This permanently deletes every message summary, the people whose texts count, your phone keys, and your connected email.
-              Your forwarding address changes. Your topics, your name, and your account are kept. It can&apos;t be undone. To fully remove
+              Your forwarding address changes, and any custom settings we made for you are removed. Your topics, your name, and your account are kept. It can&apos;t be undone. To fully remove
               Tapd In&apos;s access to Outlook, also remove it at myapps.microsoft.com.
             </p>
             <div className="mt-5">

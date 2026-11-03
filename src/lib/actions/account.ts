@@ -11,7 +11,17 @@ export type DeleteDataResult = { ok: true } | { ok: false; error: string };
 // Everything Tapd In holds about the owner's messages, texts, people, and
 // connections. Topics, their name, and the account itself are kept. Weekly-email
 // records hold only a date, and are kept so a briefing isn't sent twice.
-const TABLES = ["inbox_messages", "inbox_text_contacts", "inbox_text_names", "inbox_text_keys", "inbox_text_suggestions", "inbox_connections"];
+const TABLES = [
+  "inbox_messages",
+  "inbox_text_contacts",
+  "inbox_text_names",
+  "inbox_text_keys",
+  "inbox_text_suggestions",
+  "inbox_connections",
+  // Settings tailored for this person can name other people, so they go too.
+  "account_config",
+  "account_config_history",
+];
 
 export async function deleteAllMyData(confirmation: string): Promise<DeleteDataResult> {
   const { user } = await requireInboxOwner();

@@ -6,6 +6,7 @@ import { isAdmin } from "@/lib/admin";
 import { Wordmark, eyebrow } from "@/components/ui";
 import { gatherSnapshot } from "@/lib/inbox/health-check";
 import { evaluateHealth } from "@/lib/inbox/health";
+import { trialState } from "@/lib/inbox/trial";
 import { summarizeAccounts } from "@/lib/inbox/accounts";
 import { EnableButton, ResetTwoStepButton, TestAlertButton } from "./enable-button";
 
@@ -14,6 +15,18 @@ export const metadata = { title: "Status", robots: { index: false } };
 const TZ = "America/Phoenix";
 const nowMs = () => Date.now();
 const daysAgo = (days: number) => new Date(nowMs() - days * 86_400_000).toISOString();
+
+function trialLine(s: ReturnType<typeof trialState> | undefined): string {
+  if (!s) return "";
+  switch (s.state) {
+    case "none": return "No trial limit";
+    case "paid": return "Paying";
+    case "trial": return `Trial: ${s.daysLeft} ${s.daysLeft === 1 ? "day" : "days"} left${s.cardOnFile ? " · card on file" : ""}`;
+    case "grace": return `Trial ended · ${s.daysLeft}d grace`;
+    case "payment_issue": return `Payment failed · ${s.daysLeft}d left`;
+    case "paused": return "Paused";
+  }
+}
 
 function ago(iso: string | null, now: number): string {
   if (!iso) return "never";
@@ -37,7 +50,7 @@ export default async function AdminPage() {
   const admin = createAdminClient();
   const [snapshot, { data: users }, { data: connections }, { data: messages }, { data: digests }] = await Promise.all([
     gatherSnapshot(now),
-    admin.from("users").select("id, email, created_at, inbox_enabled").limit(500),
+    admin.from("users").select("id, email, created_at, inbox_enabled, subscription_status, trial_ends_at, stripe_subscription_id, billing_issue_at").limit(500),
     admin.from("inbox_connections").select("owner_id, account_email, status, last_synced_at, calendar_enabled").limit(1000),
     // Only who, which channel, and when. Never any message content.
     admin.from("inbox_messages").select("owner_id, source, status, received_at").gte("received_at", daysAgo(30)).limit(20000),
@@ -56,6 +69,8 @@ export default async function AdminPage() {
   );
   const myFactors = await supabase.auth.mfa.listFactors();
   const adminHasTwoStep = (myFactors.data?.totp?.length ?? 0) > 0;
+
+  const trials = new Map((users ?? []).map((u) => [u.id, trialState(u, now)]));
 
   const alerts = evaluateHealth(snapshot);
   const accounts = summarizeAccounts(
@@ -121,6 +136,12 @@ export default async function AdminPage() {
                     </p>
                   </div>
                   <EnableButton id={a.id} enabled={a.enabled} />
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-4 text-xs">
+                  <span className="text-faint">{trialLine(trials.get(a.id))}</span>
+                  <Link href={`/admin/accounts/${a.id}`} className="font-medium text-ink underline underline-offset-4">
+                    Customize
+                  </Link>
                 </div>
                 {a.enabled && (
                   <dl className="mt-5 grid gap-x-8 gap-y-3 border-t border-line pt-5 text-sm sm:grid-cols-2">

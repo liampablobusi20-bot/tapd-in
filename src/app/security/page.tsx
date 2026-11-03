@@ -38,6 +38,7 @@ const processors: [string, string][] = [
   ["Resend", "Receives email you choose to forward, and sends your Monday briefing."],
   ["Sentry", "Error monitoring. Reports are stripped of message content, addresses, and keys before they leave."],
   ["Microsoft", "Handles your Outlook sign-in. We never see your Microsoft password."],
+  ["Stripe", "Handles payment if you subscribe. Card details go straight to Stripe and never reach us."],
 ];
 
 export default function SecurityPage() {

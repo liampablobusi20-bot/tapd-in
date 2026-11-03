@@ -1,8 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { costMicros, type Usage } from "@/lib/inbox/pricing";
+import { getConfigs } from "@/lib/inbox/config-store";
+import { senderMatches, type AccountConfig } from "@/lib/inbox/config";
+import { pausedOwnerIds } from "@/lib/inbox/access";
 import {
-  TRIAGE_SYSTEM,
+  buildTriageSystem,
   buildTriageUser,
   parseTriage,
   skipReason,
@@ -19,7 +22,8 @@ const BATCH = 20;
 export async function triageWithModel(
   client: Pick<Anthropic, "messages">,
   categories: Category[],
-  message: IncomingMessage
+  message: IncomingMessage,
+  config?: Pick<AccountConfig, "triageNotes" | "summaryStyle">
 ): Promise<{ triage: Triage; usage: Usage } | null> {
   try {
     const response = await client.messages.create({
@@ -28,7 +32,7 @@ export async function triageWithModel(
       // itself, and keep the thinking light. A too-small limit cut some answers off.
       max_tokens: 2000,
       output_config: { effort: "low" },
-      system: TRIAGE_SYSTEM,
+      system: buildTriageSystem(config),
       messages: [{ role: "user", content: buildTriageUser(categories, message) }],
     });
     const text = response.content
@@ -97,8 +101,14 @@ export async function processPending(limit = BATCH) {
     .limit(limit);
 
   const categoriesByOwner = new Map<string, Category[]>();
+  // Each account's own settings, and who is paused (a finished trial or a failed payment).
+  // Paused accounts' messages simply wait, and are sorted if the account is restored.
+  const owners = [...new Set((waiting ?? []).map((r) => r.owner_id))];
+  const configs = await getConfigs(owners);
+  const paused = await pausedOwnerIds(owners);
 
   for (const row of waiting ?? []) {
+    if (paused.has(row.owner_id)) continue;
     // Claim it first, so two overlapping runs never both spend on one message.
     const { data: claimed } = await supabase
       .from("inbox_messages")
@@ -119,7 +129,9 @@ export async function processPending(limit = BATCH) {
       headers: row.headers ?? undefined,
     };
 
-    const reason = skipReason(message);
+    const config = configs.get(row.owner_id)!;
+    // Senders this account chose to ignore are never summarized or shown, and their text is discarded.
+    const reason = skipReason(message) ?? (senderMatches(config.ignoreSenders, { name: row.sender_name, address: row.sender_address }) ? "ignored-sender" : null);
     if (reason) {
       await supabase
         .from("inbox_messages")
@@ -138,9 +150,11 @@ export async function processPending(limit = BATCH) {
       categoriesByOwner.set(row.owner_id, data ?? []);
     }
 
-    const result = await triageWithModel(client, categoriesByOwner.get(row.owner_id)!, message);
+    const result = await triageWithModel(client, categoriesByOwner.get(row.owner_id)!, message, config);
     if (result) {
       const { triage, usage } = result;
+      // Senders this account marked as always urgent are urgent whatever the model thought.
+      if (senderMatches(config.alwaysUrgent, { name: row.sender_name, address: row.sender_address })) triage.importance = "urgent";
       await supabase
         .from("inbox_messages")
         .update({

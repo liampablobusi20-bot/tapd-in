@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getConfig } from "@/lib/inbox/config-store";
 import { createClient } from "@/lib/supabase/server";
 import { eyebrow } from "@/components/ui";
 import { formatPhone } from "@/lib/inbox/texts";
@@ -14,6 +15,7 @@ export default async function PeoplePage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  if (!(await getConfig(user.id)).features.people) redirect("/dashboard");
 
   const { data } = await supabase
     .from("inbox_messages")

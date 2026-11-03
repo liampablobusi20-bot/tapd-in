@@ -6,6 +6,7 @@ import { lastFullWeek } from "@/lib/inbox/digest";
 import { sendDigest } from "@/lib/inbox/send-digest";
 import { runHealthCheck } from "@/lib/inbox/health-check";
 import { purgeExpired } from "@/lib/inbox/retention-job";
+import { pausedOwnerIds } from "@/lib/inbox/access";
 import { sendUrgentAlerts } from "@/lib/inbox/urgent";
 
 export const maxDuration = 300;
@@ -54,7 +55,9 @@ export async function GET(request: Request) {
     const supabase = createAdminClient();
     const { data: owners } = await supabase.from("users").select("id").eq("inbox_enabled", true);
     const results: Record<string, number> = { sent: 0, "already-sent": 0, failed: 0 };
+    const paused = await pausedOwnerIds((owners ?? []).map((o) => o.id));
     for (const owner of owners ?? []) {
+      if (paused.has(owner.id)) continue;
       results[await sendDigest(owner.id, week, week.weekStart)]++;
     }
     return NextResponse.json(results);
