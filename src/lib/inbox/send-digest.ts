@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { composeDigest } from "@/lib/inbox/digest";
+import { logActivity } from "@/lib/inbox/activity-log";
 import { owedState, phoenixToday, worthSurfacing } from "@/lib/inbox/owed";
 
 // Sends one owner's update for a window. With a weekKey it is sent at most once
@@ -103,5 +104,6 @@ export async function sendDigest(
     await release();
     return "failed";
   }
+  await logActivity(ownerId, "weekly_email_sent");
   return "sent";
 }

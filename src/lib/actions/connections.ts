@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireInboxOwner } from "@/lib/inbox/require-owner";
+import { logActivity } from "@/lib/inbox/activity-log";
 
 // Disconnecting deletes the stored sign-in, so no more mail can be read.
 export async function disconnectEmail(id: string) {
@@ -13,6 +14,7 @@ export async function disconnectEmail(id: string) {
     .eq("id", id)
     .eq("owner_id", user.id);
   if (error) throw new Error(error.message);
+  await logActivity(user.id, "outlook_disconnected");
   revalidatePath("/dashboard/settings");
 }
 
@@ -25,6 +27,7 @@ export async function disableMeetingBriefs(id: string) {
     .eq("id", id)
     .eq("owner_id", user.id);
   if (error) throw new Error(error.message);
+  await logActivity(user.id, "meeting_briefs_off");
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard");
 }

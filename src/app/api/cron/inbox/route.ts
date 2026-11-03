@@ -5,6 +5,7 @@ import { syncAllMicrosoft } from "@/lib/inbox/microsoft-sync";
 import { lastFullWeek } from "@/lib/inbox/digest";
 import { sendDigest } from "@/lib/inbox/send-digest";
 import { runHealthCheck } from "@/lib/inbox/health-check";
+import { purgeExpired } from "@/lib/inbox/retention-job";
 
 export const maxDuration = 300;
 
@@ -14,6 +15,7 @@ export const maxDuration = 300;
 //   ?job=process  safety net: sort anything still waiting
 //   ?job=digest   Monday morning: send last week's update to every inbox owner
 //   ?job=health   every 15 minutes: email the administrator if something is wrong
+//   ?job=retention  daily: delete summaries older than each owner chose to keep
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
@@ -47,6 +49,10 @@ export async function GET(request: Request) {
 
   if (job === "health") {
     return NextResponse.json(await runHealthCheck());
+  }
+
+  if (job === "retention") {
+    return NextResponse.json(await purgeExpired());
   }
 
   return NextResponse.json({ error: "Unknown job" }, { status: 400 });

@@ -7,7 +7,7 @@ import { Wordmark, eyebrow } from "@/components/ui";
 import { gatherSnapshot } from "@/lib/inbox/health-check";
 import { evaluateHealth } from "@/lib/inbox/health";
 import { summarizeAccounts } from "@/lib/inbox/accounts";
-import { EnableButton, TestAlertButton } from "./enable-button";
+import { EnableButton, ResetTwoStepButton, TestAlertButton } from "./enable-button";
 
 export const metadata = { title: "Status", robots: { index: false } };
 
@@ -44,6 +44,19 @@ export default async function AdminPage() {
     admin.from("inbox_digests").select("owner_id, week_start").gte("week_start", daysAgo(60).slice(0, 10)).limit(2000),
   ]);
 
+  // Who has two-step sign-in on. Only whether, never the codes or secrets.
+  const twoStepOn = new Set<string>();
+  await Promise.all(
+    (users ?? [])
+      .filter((u) => u.inbox_enabled)
+      .map(async (u) => {
+        const { data } = await admin.auth.admin.mfa.listFactors({ userId: u.id });
+        if (data?.factors?.some((f) => f.status === "verified")) twoStepOn.add(u.id);
+      })
+  );
+  const myFactors = await supabase.auth.mfa.listFactors();
+  const adminHasTwoStep = (myFactors.data?.totp?.length ?? 0) > 0;
+
   const alerts = evaluateHealth(snapshot);
   const accounts = summarizeAccounts(
     { users: users ?? [], connections: connections ?? [], messages: messages ?? [], digests: digests ?? [] },
@@ -62,6 +75,15 @@ export default async function AdminPage() {
       <main className="mx-auto max-w-3xl px-6 pb-24 pt-8">
         <p className={eyebrow}>Admin</p>
         <h1 className="mt-4 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">Status</h1>
+
+        {!adminHasTwoStep && (
+          <Link
+            href="/dashboard/settings"
+            className="mt-8 block rounded-2xl bg-alert-soft px-5 py-3 text-sm font-medium text-alert"
+          >
+            This page can switch accounts on and reset sign-ins. Turn on two-step sign-in for your own account in Settings →
+          </Link>
+        )}
 
         <section className="mt-12">
           <h2 className="text-lg font-semibold tracking-tight">Right now</h2>
@@ -123,6 +145,18 @@ export default async function AdminPage() {
                       <dd className="text-muted">
                         {a.messages7d} {a.messages7d === 1 ? "message" : "messages"}
                         {a.failed7d > 0 && <span className="text-alert"> · {a.failed7d} failed</span>}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-faint">Two-step sign-in</dt>
+                      <dd className="flex items-center gap-3 text-muted">
+                        {twoStepOn.has(a.id) ? (
+                          <>
+                            On <ResetTwoStepButton id={a.id} />
+                          </>
+                        ) : (
+                          "Off"
+                        )}
                       </dd>
                     </div>
                     <div>

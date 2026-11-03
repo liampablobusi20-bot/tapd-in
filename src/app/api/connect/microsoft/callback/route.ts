@@ -5,6 +5,7 @@ import { requireInboxOwner } from "@/lib/inbox/require-owner";
 import { encryptSecret, verifyState } from "@/lib/crypto";
 import { CALENDAR_SCOPES, SCOPES, exchangeCode, fetchAccountEmail } from "@/lib/inbox/microsoft";
 import { microsoftCreds } from "@/lib/inbox/microsoft-sync";
+import { logActivity } from "@/lib/inbox/activity-log";
 
 const BACKFILL_MS = 3 * 86_400_000;
 
@@ -87,6 +88,7 @@ export async function GET(request: Request) {
         calendar_enabled: calendar,
       });
     }
+    await logActivity(user.id, calendar ? "meeting_briefs_on" : "outlook_connected");
     return back(request, calendar ? "connected=calendar" : "connected=microsoft");
   } catch {
     return back(request, "connect_error=failed");

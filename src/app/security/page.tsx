@@ -93,6 +93,10 @@ export default function SecurityPage() {
                 promised, who it was from, and the date. Plus your topics, your people list, and an encrypted sign-in token for Outlook.
               </>,
               <>
+                <strong className="font-medium text-ink">Deleted automatically:</strong> summaries are removed after 180 days unless you choose 90
+                days or 1 year in Settings.
+              </>,
+              <>
                 <strong className="font-medium text-ink">Never:</strong> sold, used for advertising, or used to train AI models.
               </>,
             ]}
@@ -128,6 +132,8 @@ export default function SecurityPage() {
               "Outlook sign-in tokens get an extra layer of encryption in our own code, with the key stored apart from the database.",
               "Phone keys are stored only as one-way hashes, and you can revoke one at any time.",
               "Two-step sign-in protects the accounts that host our code, our database, and the app itself.",
+              "You can turn on two-step sign-in for your own account too. A 6-digit code from your phone is then required, and the database itself refuses to hand over your data without it.",
+              "A record of sign-ins, connection changes, and settings changes is kept for you to review in Settings, so you can spot anything that isn't you.",
               "Error reports are scrubbed of message content and secrets before they are sent.",
             ]}
           />

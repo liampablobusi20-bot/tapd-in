@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireInboxOwner } from "@/lib/inbox/require-owner";
+import { logActivity } from "@/lib/inbox/activity-log";
 import { generateKey, normalizeHandle } from "@/lib/inbox/texts";
 import { conversationKey, groupConversations } from "@/lib/inbox/conversations";
 import { summarizeConversationNotes } from "@/lib/inbox/conversation-summary";
@@ -28,6 +29,7 @@ export async function addTextContact(formData: FormData) {
     .from("inbox_text_contacts")
     .upsert({ owner_id: user.id, name, handle }, { onConflict: "owner_id,handle" });
   if (error) throw new Error(error.message);
+  await logActivity(user.id, "text_person_added");
   revalidatePath("/dashboard/settings");
 }
 
@@ -39,6 +41,7 @@ export async function removeTextContact(id: string) {
     .eq("id", id)
     .eq("owner_id", user.id);
   if (error) throw new Error(error.message);
+  await logActivity(user.id, "text_person_removed");
   revalidatePath("/dashboard/settings");
 }
 
@@ -57,6 +60,7 @@ export async function createTextKey(): Promise<string> {
     .from("inbox_text_keys")
     .insert({ owner_id: user.id, key_hash: hash, key_prefix: prefix });
   if (error) throw new Error(error.message);
+  await logActivity(user.id, "phone_key_created");
   revalidatePath("/dashboard/settings");
   return key;
 }
@@ -69,6 +73,7 @@ export async function revokeTextKey(id: string) {
     .eq("id", id)
     .eq("owner_id", user.id);
   if (error) throw new Error(error.message);
+  await logActivity(user.id, "phone_key_revoked");
   revalidatePath("/dashboard/settings");
 }
 

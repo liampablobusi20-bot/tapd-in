@@ -38,5 +38,17 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // An account with two-step sign-in on must finish it before reaching anything private.
+  const needsSecondStep = isOwnerRoute || request.nextUrl.pathname.startsWith("/admin");
+  if (user && needsSecondStep) {
+    const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (level?.nextLevel === "aal2" && level.currentLevel !== "aal2") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login/verify";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   return response;
 }

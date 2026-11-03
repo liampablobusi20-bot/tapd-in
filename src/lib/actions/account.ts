@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireInboxOwner } from "@/lib/inbox/require-owner";
+import { logActivity } from "@/lib/inbox/activity-log";
+import { isRetention, retentionLabel } from "@/lib/inbox/retention";
 
 export type DeleteDataResult = { ok: true } | { ok: false; error: string };
 
@@ -24,6 +26,18 @@ export async function deleteAllMyData(confirmation: string): Promise<DeleteDataR
   const { error } = await admin.from("users").update({ inbox_token: null }).eq("id", user.id);
   if (error) return { ok: false, error: "Something went wrong, and some data may remain. Please try again." };
 
+  await logActivity(user.id, "data_deleted");
   revalidatePath("/dashboard", "layout");
+  return { ok: true };
+}
+
+// How long summaries are kept before they are deleted automatically.
+export async function setRetention(days: number): Promise<DeleteDataResult> {
+  const { user } = await requireInboxOwner();
+  if (!isRetention(days)) return { ok: false, error: "Choose 90 days, 180 days, or 1 year." };
+  const { error } = await createAdminClient().from("users").update({ retention_days: days }).eq("id", user.id);
+  if (error) return { ok: false, error: "Couldn't save that. Please try again." };
+  await logActivity(user.id, "retention_changed", retentionLabel(days));
+  revalidatePath("/dashboard/settings");
   return { ok: true };
 }

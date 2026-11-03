@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { sendTestAlert, setInboxEnabled } from "@/lib/actions/admin";
+import { resetTwoStep, sendTestAlert, setInboxEnabled } from "@/lib/actions/admin";
 import { Spinner } from "@/components/pending-button";
 
 export function EnableButton({ id, enabled }: { id: string; enabled: boolean }) {
@@ -37,5 +37,22 @@ export function TestAlertButton() {
       </button>
       {result && <span className={`text-sm ${result.ok ? "text-accent" : "text-alert"}`}>{result.message}</span>}
     </div>
+  );
+}
+
+export function ResetTwoStepButton({ id }: { id: string }) {
+  const [pending, start] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        if (window.confirm("Reset two-step sign-in for this person? Only do this after confirming it's really them.")) start(() => resetTwoStep(id));
+      }}
+      className="inline-flex items-center gap-1.5 text-xs text-faint transition-colors hover:text-alert disabled:opacity-50"
+    >
+      {pending && <Spinner className="h-3 w-3" />}
+      Reset
+    </button>
   );
 }

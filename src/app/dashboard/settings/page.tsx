@@ -8,6 +8,8 @@ import { CategoryForm, CopyAddress, NameForm, RemoveButton } from "../inbox-form
 import { ContactForm, KeyMaker, RemoveItem, SuggestionRow, SuggestionsToggle } from "../texts-forms";
 import { formatPhone } from "@/lib/inbox/texts";
 import { DeleteDataForm } from "../delete-data";
+import { TwoStepCard } from "../two-step";
+import { RetentionSelect } from "../retention-select";
 
 const CONNECT_ERRORS: Record<string, string> = {
   "needs-admin":
@@ -46,7 +48,7 @@ export default async function SettingsPage({
     .order("created_at", { ascending: true });
 
   const [{ data: profile }, { data: categories }, { data: contacts }, { data: keys }, { data: suggestions }] = await Promise.all([
-    supabase.from("users").select("display_name, text_suggestions").eq("id", user.id).single(),
+    supabase.from("users").select("display_name, text_suggestions, retention_days").eq("id", user.id).single(),
     supabase.from("inbox_categories").select("id, name, description").order("sort_order", { ascending: true }),
     supabase.from("inbox_text_contacts").select("id, name, handle").order("name", { ascending: true }),
     supabase
@@ -61,6 +63,9 @@ export default async function SettingsPage({
       .order("last_seen", { ascending: false })
       .limit(50),
   ]);
+
+  const { data: factors } = await supabase.auth.mfa.listFactors();
+  const twoStepOn = (factors?.totp?.length ?? 0) > 0;
 
   const card = "mt-5 rounded-3xl border border-line bg-card p-7 sm:p-8";
 
@@ -313,8 +318,29 @@ export default async function SettingsPage({
       </section>
 
       <section className="mt-14">
+        <h2 className="text-lg font-semibold tracking-tight">Sign-in security</h2>
+        <div className={card}>
+          <TwoStepCard enabled={twoStepOn} />
+        </div>
+      </section>
+
+      <section className="mt-14">
         <h2 className="text-lg font-semibold tracking-tight">Your data</h2>
-        <details className="mt-1.5">
+        <p className="mt-1.5 max-w-lg text-muted">
+          Summaries are deleted automatically after the time you choose. The text of each message is already deleted once it&apos;s summarized.
+        </p>
+        <div className={card}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="font-medium">Keep summaries for</p>
+            <RetentionSelect days={profile?.retention_days ?? 180} />
+          </div>
+          <p className="mt-5 border-t border-line pt-5 text-sm">
+            <Link href="/dashboard/settings/activity" className="font-medium text-ink underline underline-offset-4">
+              See recent account activity
+            </Link>
+          </p>
+        </div>
+        <details className="mt-6">
           <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Delete all my data</summary>
           <div className={card}>
             <p className="max-w-md text-sm leading-relaxed text-muted">
