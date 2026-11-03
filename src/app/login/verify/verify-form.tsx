@@ -4,10 +4,11 @@ import { useActionState } from "react";
 import { verifyLogin } from "@/lib/actions/auth";
 import { btnPrimary, field, label } from "@/components/ui";
 
-export function VerifyForm() {
+export function VerifyForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState(verifyLogin, undefined);
   return (
     <form action={action} className="flex flex-col gap-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="code" className={label}>
           6-digit code

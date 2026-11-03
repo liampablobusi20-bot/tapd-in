@@ -7,7 +7,7 @@ import { logActivity } from "@/lib/inbox/activity-log";
 import { deviceLabel } from "@/lib/inbox/activity";
 
 export type AuthState =
-  | { error?: string; needsConfirmation?: boolean }
+  | { error?: string; needsConfirmation?: boolean; sent?: boolean }
   | undefined;
 
 export async function signup(
@@ -82,6 +82,9 @@ export async function verifyLogin(
   if (!user) redirect("/login");
 
   const code = String(formData.get("code") ?? "").replace(/\s+/g, "");
+  // Only places inside the app are allowed as a destination.
+  const requested = String(formData.get("next") ?? "");
+  const destination = requested === "/reset-password" ? requested : "/dashboard";
   const device = deviceLabel((await headers()).get("user-agent"));
   const { data: factors } = await supabase.auth.mfa.listFactors();
   const factor = factors?.totp?.[0];
@@ -96,6 +99,50 @@ export async function verifyLogin(
   }
 
   await logActivity(user.id, "signed_in", `${device}, two-step`);
+  redirect(destination);
+}
+
+// Sends a password-reset link. The answer is the same whether or not the address has an
+// account, so this can't be used to find out who has one.
+export async function requestPasswordReset(
+  _prevState: AuthState,
+  formData: FormData
+): Promise<AuthState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email || !email.includes("@")) return { error: "Enter the email you signed up with." };
+
+  const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${site}/auth/confirm?next=/reset-password`,
+  });
+  if (error?.status === 429) return { error: "Too many requests. Please wait a few minutes and try again." };
+  if (error) console.error("Password reset request failed:", error.message);
+  return { sent: true };
+}
+
+// Sets the new password. They arrive here signed in by the emailed link; any other
+// sessions are signed out, so whoever had the old password is shut out.
+export async function updatePassword(
+  _prevState: AuthState,
+  formData: FormData
+): Promise<AuthState> {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password !== confirm) return { error: "The two passwords don't match." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?error=reset-failed");
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  await supabase.auth.signOut({ scope: "others" });
+  await logActivity(user.id, "password_changed", deviceLabel((await headers()).get("user-agent")));
   redirect("/dashboard");
 }
 

@@ -2,6 +2,7 @@
 
 export type ActivityEvent =
   | "signed_in"
+  | "password_changed"
   | "two_step_failed"
   | "two_step_enabled"
   | "two_step_disabled"
@@ -20,6 +21,7 @@ export type ActivityEvent =
 
 const WORDS: Record<ActivityEvent, string> = {
   signed_in: "Signed in",
+  password_changed: "Password changed",
   two_step_failed: "A two-step code was entered wrongly",
   two_step_enabled: "Two-step sign-in turned on",
   two_step_disabled: "Two-step sign-in turned off",

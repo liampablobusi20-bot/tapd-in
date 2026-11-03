@@ -6,7 +6,8 @@ import { VerifyForm } from "./verify-form";
 
 export const metadata = { title: "Two-step sign-in" };
 
-export default async function VerifyPage() {
+export default async function VerifyPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,7 +15,7 @@ export default async function VerifyPage() {
   if (!user) redirect("/login");
   const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   // Nothing to do unless this account has two-step on and hasn't finished it yet.
-  if (!(level?.nextLevel === "aal2" && level.currentLevel !== "aal2")) redirect("/dashboard");
+  if (!(level?.nextLevel === "aal2" && level.currentLevel !== "aal2")) redirect(next === "/reset-password" ? next : "/dashboard");
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-5 py-16">
@@ -23,7 +24,7 @@ export default async function VerifyPage() {
         <h1 className="font-display text-3xl tracking-tight">One more step</h1>
         <p className="mt-1.5 text-sm text-muted">Open your authenticator app and enter the 6-digit code for Tapd In.</p>
         <div className="mt-6">
-          <VerifyForm />
+          <VerifyForm next={next === "/reset-password" ? next : undefined} />
         </div>
         <form action={logout} className="mt-6 text-center">
           <button type="submit" className="text-sm text-muted underline underline-offset-4 transition-colors hover:text-ink">

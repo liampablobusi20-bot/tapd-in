@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Wordmark } from "@/components/ui";
 import { LoginForm } from "./login-form";
 
@@ -18,6 +19,18 @@ export default async function LoginPage({
           <p className="mt-5 rounded-xl bg-alert-soft px-4 py-3 text-sm text-alert">
             That confirmation link is invalid or expired. Try signing up again, or log in if you
             already confirmed.
+          </p>
+        )}
+        {error === "reset-failed" && (
+          <p className="mt-5 rounded-xl bg-alert-soft px-4 py-3 text-sm text-alert">
+            That reset link is invalid or has expired. Request a new one below.
+          </p>
+        )}
+        {error === "reset-failed" && (
+          <p className="mt-3 text-sm">
+            <Link href="/forgot-password" className="font-medium text-ink underline underline-offset-4">
+              Get a new reset link
+            </Link>
           </p>
         )}
         <div className="mt-6">
