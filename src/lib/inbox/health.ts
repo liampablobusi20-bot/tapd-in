@@ -28,6 +28,8 @@ export type HealthSnapshot = {
   // Only set while the Monday email is due: who should have it and who got it.
   digest: { weekKey: string; expected: string[]; sent: string[] } | null;
   newSignups: { id: string; email: string }[];
+  // People who normally get texts but haven't for a week: the iPhone automation may have stopped.
+  quietTexts: { id: string; email: string; weekKey: string }[];
 };
 
 export type HealthAlert = { key: string; level: "problem" | "info"; title: string; detail: string };
@@ -87,6 +89,15 @@ export function evaluateHealth(s: HealthSnapshot): HealthAlert[] {
     }
   }
 
+  for (const q of s.quietTexts) {
+    alerts.push({
+      key: `texts-quiet:${q.id}:${q.weekKey}`,
+      level: "info",
+      title: `${q.email} hasn't had a text in a week, but usually does`,
+      detail: "Their iPhone automation may have stopped (a phone update or a turned-off automation can do it). Worth a quick check with them.",
+    });
+  }
+
   for (const user of s.newSignups) {
     alerts.push({
       key: `signup:${user.id}`,
@@ -96,6 +107,29 @@ export function evaluateHealth(s: HealthSnapshot): HealthAlert[] {
     });
   }
   return alerts;
+}
+
+const DAY_MS = 86_400_000;
+
+// Someone who got at least MIN_BEFORE texts in the three weeks before the last seven days,
+// and none since, has probably had their iPhone automation stop. Someone who only ever got
+// the odd text is never flagged. At most once a week per person (the key carries the week).
+export const QUIET_MIN_BEFORE = 3;
+
+export function quietTextOwners(
+  texts: { owner_id: string; received_at: string }[],
+  nowMs: number
+): string[] {
+  const recentFrom = nowMs - 7 * DAY_MS;
+  const beforeFrom = nowMs - 28 * DAY_MS;
+  const recent = new Set<string>();
+  const before = new Map<string, number>();
+  for (const t of texts) {
+    const at = Date.parse(t.received_at);
+    if (at >= recentFrom) recent.add(t.owner_id);
+    else if (at >= beforeFrom) before.set(t.owner_id, (before.get(t.owner_id) ?? 0) + 1);
+  }
+  return [...before].filter(([id, n]) => n >= QUIET_MIN_BEFORE && !recent.has(id)).map(([id]) => id);
 }
 
 // Problems repeat only after the cooldown; information is only ever sent once.

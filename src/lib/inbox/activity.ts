@@ -16,6 +16,8 @@ export type ActivityEvent =
   | "phone_key_created"
   | "phone_key_revoked"
   | "retention_changed"
+  | "urgent_alerts_on"
+  | "urgent_alerts_off"
   | "data_deleted"
   | "weekly_email_sent";
 
@@ -35,6 +37,8 @@ const WORDS: Record<ActivityEvent, string> = {
   phone_key_created: "A phone key was created",
   phone_key_revoked: "A phone key was revoked",
   retention_changed: "Keep-summaries setting changed",
+  urgent_alerts_on: "Urgent alerts turned on",
+  urgent_alerts_off: "Urgent alerts turned off",
   data_deleted: "All message data was deleted",
   weekly_email_sent: "Briefing emailed",
 };

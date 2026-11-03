@@ -6,8 +6,19 @@ import { lastFullWeek } from "@/lib/inbox/digest";
 import { sendDigest } from "@/lib/inbox/send-digest";
 import { runHealthCheck } from "@/lib/inbox/health-check";
 import { purgeExpired } from "@/lib/inbox/retention-job";
+import { sendUrgentAlerts } from "@/lib/inbox/urgent";
 
 export const maxDuration = 300;
+
+// A problem with alerts must never stop mail from being read and sorted.
+async function alertsSafely() {
+  try {
+    return await sendUrgentAlerts();
+  } catch (err) {
+    console.error("Urgent alerts failed:", err instanceof Error ? err.message : "unknown error");
+    return null;
+  }
+}
 
 // Called by Vercel Cron (see vercel.json). Vercel sends the CRON_SECRET as a
 // bearer token; anything else is refused.
@@ -27,11 +38,13 @@ export async function GET(request: Request) {
   if (job === "sync") {
     const synced = await syncAllMicrosoft();
     const sorted = await processPending(50);
-    return NextResponse.json({ synced, sorted });
+    const urgent = await alertsSafely();
+    return NextResponse.json({ synced, sorted, urgent });
   }
 
   if (job === "process") {
-    return NextResponse.json(await processPending(50));
+    const sorted = await processPending(50);
+    return NextResponse.json({ ...sorted, urgent: await alertsSafely() });
   }
 
   if (job === "digest") {

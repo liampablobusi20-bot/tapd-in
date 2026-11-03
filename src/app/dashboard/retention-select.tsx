@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setRetention } from "@/lib/actions/account";
+import { setRetention, setUrgentAlerts } from "@/lib/actions/account";
 import { RETENTION_OPTIONS, retentionLabel } from "@/lib/inbox/retention";
 import { Spinner } from "@/components/pending-button";
 
@@ -31,5 +31,21 @@ export function RetentionSelect({ days }: { days: number }) {
       {pending && <Spinner className="h-3.5 w-3.5" />}
       {error && <span className="text-sm text-alert">{error}</span>}
     </div>
+  );
+}
+
+export function UrgentAlertsToggle({ on }: { on: boolean }) {
+  const [pending, start] = useTransition();
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={pending}
+      onClick={() => start(async () => void (await setUrgentAlerts(!on)))}
+      className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors disabled:opacity-60 ${on ? "bg-accent" : "bg-line"}`}
+    >
+      <span className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-card shadow transition-transform ${on ? "translate-x-5" : ""}`} />
+    </button>
   );
 }

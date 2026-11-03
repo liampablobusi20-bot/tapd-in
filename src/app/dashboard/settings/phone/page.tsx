@@ -43,9 +43,14 @@ export default async function PhoneGuidePage() {
         <Link href="/dashboard/settings" className="text-sm text-muted hover:text-ink">
           ← Settings
         </Link>
-        <Link href="/guide#texts" className="text-sm text-muted underline underline-offset-4 hover:text-ink">
-          Full setup guide
-        </Link>
+        <div className="flex items-center gap-5 text-sm">
+          <Link href="/guide/iphone" className="text-muted underline underline-offset-4 hover:text-ink">
+            One-page cheat sheet
+          </Link>
+          <Link href="/guide#texts" className="text-muted underline underline-offset-4 hover:text-ink">
+            Full setup guide
+          </Link>
+        </div>
       </div>
       <p className={`${eyebrow} mt-8`}>Texts</p>
       <h1 className="mt-4 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">Set up texts on your iPhone</h1>

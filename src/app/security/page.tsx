@@ -77,6 +77,10 @@ export default function SecurityPage() {
                 <strong className="font-medium text-ink">Your calendar, only if you turn on meeting briefs.</strong> Titles, times, and attendees of
                 the next day or so. We don&apos;t read notes or attachments, and we don&apos;t store any of it.
               </>,
+              <>
+                <strong className="font-medium text-ink">Urgent alerts, only if you turn them on.</strong> An email with who it&apos;s from and the
+                one-line summary. Never the message itself.
+              </>,
             ]}
           />
         </Block>
@@ -149,7 +153,7 @@ export default function SecurityPage() {
                 <strong className="font-medium text-ink">Delete all my data</strong> in Settings removes everything we hold about your messages, texts,
                 people, and connections in one step.
               </>,
-              "Disconnect Outlook any time in Settings, and turn meeting briefs off separately. You can also remove Tapd In at myapps.microsoft.com.",
+              "Disconnect Outlook any time in Settings, and turn meeting briefs and urgent alerts off separately. You can also remove Tapd In at myapps.microsoft.com.",
             ]}
           />
         </Block>

@@ -31,6 +31,16 @@ export async function deleteAllMyData(confirmation: string): Promise<DeleteDataR
   return { ok: true };
 }
 
+// Whether to email the owner right away when something urgent arrives.
+export async function setUrgentAlerts(on: boolean): Promise<DeleteDataResult> {
+  const { user } = await requireInboxOwner();
+  const { error } = await createAdminClient().from("users").update({ urgent_alerts: on }).eq("id", user.id);
+  if (error) return { ok: false, error: "Couldn't save that. Please try again." };
+  await logActivity(user.id, on ? "urgent_alerts_on" : "urgent_alerts_off");
+  revalidatePath("/dashboard/settings");
+  return { ok: true };
+}
+
 // How long summaries are kept before they are deleted automatically.
 export async function setRetention(days: number): Promise<DeleteDataResult> {
   const { user } = await requireInboxOwner();

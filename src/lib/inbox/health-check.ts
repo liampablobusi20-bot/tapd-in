@@ -11,6 +11,7 @@ import {
   evaluateHealth,
   type HealthAlert,
   type HealthSnapshot,
+  quietTextOwners,
 } from "@/lib/inbox/health";
 
 // Reads how the system is doing. Counts and account names only, never message content.
@@ -18,7 +19,7 @@ export async function gatherSnapshot(nowMs: number): Promise<HealthSnapshot> {
   const admin = createAdminClient();
   const iso = (ms: number) => new Date(ms).toISOString();
 
-  const [{ count: pendingTooLong }, { count: failedLastHour }, { data: connections }, { data: signups }] = await Promise.all([
+  const [{ count: pendingTooLong }, { count: failedLastHour }, { data: connections }, { data: signups }, { data: texts }, { data: enabledUsers }] = await Promise.all([
     admin
       .from("inbox_messages")
       .select("id", { count: "exact", head: true })
@@ -35,7 +36,14 @@ export async function gatherSnapshot(nowMs: number): Promise<HealthSnapshot> {
       .select("id, email")
       .eq("inbox_enabled", false)
       .gte("created_at", iso(nowMs - 24 * 3_600_000)),
+    // Only who and when, never any text.
+    admin.from("inbox_messages").select("owner_id, received_at").eq("source", "sms").gte("received_at", iso(nowMs - 28 * 86_400_000)).limit(20000),
+    admin.from("users").select("id, email").eq("inbox_enabled", true),
   ]);
+
+  const quietIds = new Set(quietTextOwners(texts ?? [], nowMs));
+  const weekKey = new Date(nowMs - ((new Date(nowMs).getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
+  const quietTexts = (enabledUsers ?? []).filter((u) => quietIds.has(u.id)).map((u) => ({ id: u.id, email: u.email, weekKey }));
 
   let digest: HealthSnapshot["digest"] = null;
   const due = digestWindow(nowMs);
@@ -69,6 +77,7 @@ export async function gatherSnapshot(nowMs: number): Promise<HealthSnapshot> {
     })),
     digest,
     newSignups: (signups ?? []).map((u) => ({ id: u.id, email: u.email })),
+    quietTexts,
   };
 }
 

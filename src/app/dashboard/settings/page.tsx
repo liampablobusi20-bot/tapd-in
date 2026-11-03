@@ -9,7 +9,7 @@ import { ContactForm, KeyMaker, RemoveItem, SuggestionRow, SuggestionsToggle } f
 import { formatPhone } from "@/lib/inbox/texts";
 import { DeleteDataForm } from "../delete-data";
 import { TwoStepCard } from "../two-step";
-import { RetentionSelect } from "../retention-select";
+import { RetentionSelect, UrgentAlertsToggle } from "../retention-select";
 
 const CONNECT_ERRORS: Record<string, string> = {
   "needs-admin":
@@ -48,7 +48,7 @@ export default async function SettingsPage({
     .order("created_at", { ascending: true });
 
   const [{ data: profile }, { data: categories }, { data: contacts }, { data: keys }, { data: suggestions }] = await Promise.all([
-    supabase.from("users").select("display_name, text_suggestions, retention_days").eq("id", user.id).single(),
+    supabase.from("users").select("display_name, text_suggestions, retention_days, urgent_alerts").eq("id", user.id).single(),
     supabase.from("inbox_categories").select("id, name, description").order("sort_order", { ascending: true }),
     supabase.from("inbox_text_contacts").select("id, name, handle").order("name", { ascending: true }),
     supabase
@@ -283,6 +283,22 @@ export default async function SettingsPage({
           </div>
         </div>
         </details>
+      </section>
+
+      <section className="mt-14">
+        <h2 className="text-lg font-semibold tracking-tight">Urgent alerts</h2>
+        <div className={card}>
+          <div className="flex items-start justify-between gap-5">
+            <div>
+              <p className="font-medium">Email me right away when something urgent arrives</p>
+              <p className="mt-1 max-w-md text-sm leading-relaxed text-muted">
+                A short email with who it&apos;s from and a one-line summary. Several at once are bundled into one email. Quiet from 10 pm to
+                6 am Arizona time, and off unless you turn it on. Urgent means it needs action today or has a deadline within days.
+              </p>
+            </div>
+            <UrgentAlertsToggle on={Boolean(profile?.urgent_alerts)} />
+          </div>
+        </div>
       </section>
 
       <section className="mt-14">
