@@ -40,7 +40,7 @@ export function TextsModeCard({ mode }: { mode: "private" | "easy" }) {
           <p className="font-medium">Easy mode{mode === "easy" && <span className="ml-2 text-xs font-normal text-accent">Current</span>}</p>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">
             Your iPhone sends every text, and Tapd In immediately discards any that aren&apos;t from someone on your list. Add someone below and it works
-            straight away, with nothing to change on your phone. A small Shortcuts banner may appear for every text you receive, not only business ones.
+            straight away, with nothing to change on your phone. A small Shortcuts banner may appear for every text you receive, not only business ones. Very short one-word texts can be missed unless you add an extra automation.
           </p>
         </div>
       </div>

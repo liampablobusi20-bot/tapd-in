@@ -25,8 +25,8 @@ const steps = [
 const easySteps = steps.map((step) =>
   step.title === "Choose whose texts to send"
     ? {
-        title: "Leave Sender empty",
-        body: "Don't pick anyone under Sender. Leave it so any message starts the automation. Tapd In keeps only the people on the list in Settings and immediately discards every other text.",
+        title: "Choose Any Sender, and add a space",
+        body: "Set Sender to Any Sender. Shortcuts won't let you leave Message Contains empty, so type a single space there. Tapd In keeps only the people on the list in Settings and immediately discards every other text. One catch: a space only matches texts that contain a space, so a one-word text like \"Yes\" is skipped. See the note at the bottom to cover those.",
       }
     : step.title === "Test it"
       ? {
@@ -151,6 +151,18 @@ export default async function PhoneGuidePage() {
           </a>
         </div>
       </details>
+
+      {easy && (
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold tracking-tight">Catching one-word texts</h2>
+          <p className="mt-3 text-muted">
+            Message Contains only runs for texts that contain what you typed, so a single space misses one-word replies such as &quot;Yes&quot; or &quot;Ok&quot;. To
+            catch those too, make one or two more automations exactly like this one, each with Sender set to Any Sender and a different single letter in
+            Message Contains, such as <strong className="font-medium text-ink">e</strong> and <strong className="font-medium text-ink">o</strong>. If two of them run for the same
+            text, Tapd In keeps it only once. You may see a banner for each one.
+          </p>
+        </section>
+      )}
 
       <section className="mt-12">
         <h2 className="text-lg font-semibold tracking-tight">If you see a banner when a text arrives</h2>
