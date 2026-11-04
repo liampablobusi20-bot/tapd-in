@@ -13,6 +13,8 @@ export type ActivityEvent =
   | "meeting_briefs_off"
   | "text_person_added"
   | "text_person_removed"
+  | "text_people_imported"
+  | "text_people_cleared"
   | "phone_key_created"
   | "phone_key_revoked"
   | "retention_changed"
@@ -41,6 +43,8 @@ const WORDS: Record<ActivityEvent, string> = {
   meeting_briefs_off: "Meeting briefs turned off",
   text_person_added: "A person was added to your texts list",
   text_person_removed: "A person was removed from your texts list",
+  text_people_imported: "People were added to your texts list in bulk",
+  text_people_cleared: "Everyone was removed from your texts list",
   phone_key_created: "A phone key was created",
   phone_key_revoked: "A phone key was revoked",
   retention_changed: "Keep-summaries setting changed",

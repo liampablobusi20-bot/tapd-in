@@ -11,6 +11,7 @@ import { DeleteDataForm } from "../delete-data";
 import { TwoStepCard } from "../two-step";
 import { BillingCard } from "../billing-card";
 import { TextsModeCard } from "../texts-mode";
+import { ContactImportForm, RemoveEveryone } from "../contact-import-form";
 import { getConfig } from "@/lib/inbox/config-store";
 import { trialState } from "@/lib/inbox/trial";
 import { billingConfigured } from "@/lib/billing/stripe";
@@ -224,9 +225,14 @@ export default async function SettingsPage({
         </div>
 
         <div className={card}>
-          <p className="font-medium">People whose texts count</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="font-medium">
+              People whose texts count{(contacts?.length ?? 0) > 0 && <span className="ml-2 text-sm font-normal text-faint">{contacts?.length}</span>}
+            </p>
+            <RemoveEveryone count={contacts?.length ?? 0} />
+          </div>
           <ul className="mt-4 divide-y divide-line">
-            {contacts?.map((contact) => (
+            {contacts?.slice(0, 8).map((contact) => (
               <li key={contact.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
                 <div className="min-w-0">
                   <p className="font-medium">{contact.name}</p>
@@ -235,6 +241,24 @@ export default async function SettingsPage({
                 <RemoveItem id={contact.id} kind="contact" label="Remove" />
               </li>
             ))}
+            {(contacts?.length ?? 0) > 8 && (
+              <li className="pt-4">
+                <details>
+                  <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Show {(contacts?.length ?? 0) - 8} more</summary>
+                  <ul className="mt-4 divide-y divide-line">
+                    {contacts?.slice(8).map((contact) => (
+                      <li key={contact.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                        <div className="min-w-0">
+                          <p className="font-medium">{contact.name}</p>
+                          <p className="mt-0.5 text-sm text-muted">{formatPhone(contact.handle)}</p>
+                        </div>
+                        <RemoveItem id={contact.id} kind="contact" label="Remove" />
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            )}
             {contacts?.length === 0 && (
               <li className="text-sm text-muted">
                 {config.textsMode === "easy" ? "No one yet. Nothing is kept until you add someone." : "No one yet. Nothing is sent until you add someone."}
@@ -242,6 +266,7 @@ export default async function SettingsPage({
             )}
           </ul>
           <ContactForm />
+          <ContactImportForm mode={config.textsMode} />
         </div>
 
         {(profile?.text_suggestions || config.textsMode === "easy") && (

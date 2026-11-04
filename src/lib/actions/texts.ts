@@ -6,11 +6,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireInboxOwner } from "@/lib/inbox/require-owner";
 import { logActivity } from "@/lib/inbox/activity-log";
 import { applyConfigPatch } from "@/lib/inbox/config-store";
-import { generateKey, normalizeHandle } from "@/lib/inbox/texts";
+import { parseContactList, type ImportSkip } from "@/lib/inbox/contact-import";
+import { formatPhone, generateKey, normalizeHandle } from "@/lib/inbox/texts";
 import { conversationKey, groupConversations } from "@/lib/inbox/conversations";
 import { summarizeConversationNotes } from "@/lib/inbox/conversation-summary";
 
-const MAX_CONTACTS = 100;
+const MAX_CONTACTS = 500;
 const MAX_KEYS = 5;
 
 export async function addTextContact(formData: FormData) {
@@ -193,5 +194,87 @@ export async function setTextsMode(mode: "private" | "easy", agreed: boolean): P
   if (result.changes.length > 0) await logActivity(user.id, mode === "easy" ? "texts_easy_on" : "texts_easy_off");
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard/settings/phone");
+  return { ok: true };
+}
+
+export type ImportPreview =
+  | {
+      ok: true;
+      toAdd: number;
+      alreadyOnList: number;
+      duplicates: number;
+      skipped: ImportSkip[];
+      sample: { name: string; number: string }[];
+    }
+  | { ok: false; error: string };
+
+// Which of these numbers are already on the list, so a second paste doesn't double anyone.
+async function existingHandles(ownerId: string, handles: string[]): Promise<Set<string>> {
+  const supabase = createAdminClient();
+  const found = new Set<string>();
+  for (let i = 0; i < handles.length; i += 100) {
+    const { data } = await supabase
+      .from("inbox_text_contacts")
+      .select("handle")
+      .eq("owner_id", ownerId)
+      .in("handle", handles.slice(i, i + 100));
+    for (const row of data ?? []) found.add(row.handle);
+  }
+  return found;
+}
+
+// Shows what pasting a list would do, without changing anything.
+export async function previewContactImport(text: string): Promise<ImportPreview> {
+  const { user } = await requireInboxOwner();
+  const parsed = parseContactList(text.slice(0, 200_000));
+  if (parsed.tooMany) return { ok: false, error: "That's more than 500 people at once. Please paste them in smaller groups." };
+  if (parsed.entries.length === 0) {
+    return { ok: false, error: parsed.skipped.length ? "Couldn't find a phone number or email on any line." : "Paste some people first, one per line." };
+  }
+  const existing = await existingHandles(user.id, parsed.entries.map((e) => e.handle));
+  const fresh = parsed.entries.filter((e) => !existing.has(e.handle));
+  return {
+    ok: true,
+    toAdd: fresh.length,
+    alreadyOnList: parsed.entries.length - fresh.length,
+    duplicates: parsed.duplicates,
+    skipped: parsed.skipped.slice(0, 5),
+    sample: fresh.slice(0, 5).map((e) => ({ name: e.name, number: formatPhone(e.handle) })),
+  };
+}
+
+export type ImportResult = { ok: true; added: number; alreadyOnList: number } | { ok: false; error: string };
+
+// Adds everyone in the pasted list. People already on the list keep their existing names.
+export async function importContacts(text: string): Promise<ImportResult> {
+  const { supabase, user } = await requireInboxOwner();
+  const parsed = parseContactList(text.slice(0, 200_000));
+  if (parsed.tooMany) return { ok: false, error: "That's more than 500 people at once. Please paste them in smaller groups." };
+  const existing = await existingHandles(user.id, parsed.entries.map((e) => e.handle));
+  const fresh = parsed.entries.filter((e) => !existing.has(e.handle));
+  if (fresh.length === 0) return { ok: true, added: 0, alreadyOnList: parsed.entries.length };
+
+  const { count } = await supabase.from("inbox_text_contacts").select("id", { count: "exact", head: true }).eq("owner_id", user.id);
+  if ((count ?? 0) + fresh.length > MAX_CONTACTS) {
+    return { ok: false, error: `Your list can hold ${MAX_CONTACTS} people and has ${count ?? 0}. This would add ${fresh.length}.` };
+  }
+  for (let i = 0; i < fresh.length; i += 200) {
+    const { error } = await supabase
+      .from("inbox_text_contacts")
+      .upsert(fresh.slice(i, i + 200).map((e) => ({ owner_id: user.id, name: e.name, handle: e.handle })), { onConflict: "owner_id,handle", ignoreDuplicates: true });
+    if (error) return { ok: false, error: "Something went wrong, and some people may not have been added. Please try again." };
+  }
+  await logActivity(user.id, "text_people_imported", `${fresh.length} people`);
+  revalidatePath("/dashboard/settings");
+  return { ok: true, added: fresh.length, alreadyOnList: parsed.entries.length - fresh.length };
+}
+
+// For a sales list that has run its course, or a paste that went wrong.
+export async function removeAllContacts(): Promise<ModeResult> {
+  const { supabase, user } = await requireInboxOwner();
+  const { error } = await supabase.from("inbox_text_contacts").delete().eq("owner_id", user.id);
+  if (error) return { ok: false, error: "Couldn't clear the list. Please try again." };
+  await logActivity(user.id, "text_people_cleared");
+  revalidatePath("/dashboard/settings");
   return { ok: true };
 }
