@@ -14,12 +14,22 @@ const EMAIL = /[^\s,;|<>()"'\[\]]+@[^\s,;|<>()"'\[\]]+\.[^\s,;|<>()"'\[\]]+/;
 // A run that looks like a phone number: optional +, digits, and the usual spaces, dots, dashes, brackets.
 const PHONE_RUN = /\+?\(?\d[\d\s().\-]{5,}\d/g;
 
-const cleanName = (raw: string): string =>
-  raw
-    .replace(/[\t,;|"'<>\[\]]+/g, " ")
-    .replace(/^[\s\-–—:()]+|[\s\-–—:()]+$/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+// Separators people put between a name and a number, which should not end up in the name.
+const EDGE = /^[\s\-–—:=/\\>→•*#~_|]+|[\s\-–—:=/\\>→•*#~_|]+$/g;
+const count = (text: string, ch: string) => text.split(ch).length - 1;
+
+const cleanName = (raw: string): string => {
+  let name = raw.replace(/[\t,;"'<>\[\]]+/g, " ").replace(/\s+/g, " ");
+  // Strip separators from both ends, and any bracket left without its partner, until nothing changes.
+  for (let i = 0; i < 6; i++) {
+    const before = name;
+    name = name.replace(EDGE, "");
+    if (name.endsWith("(") || (name.endsWith(")") && count(name, ")") > count(name, "("))) name = name.slice(0, -1);
+    if (name.startsWith(")") || (name.startsWith("(") && count(name, "(") > count(name, ")"))) name = name.slice(1);
+    if (name === before) break;
+  }
+  return name.trim();
+};
 
 export function parseContactList(text: string, max = MAX_IMPORT): ImportResult {
   const entries: ImportEntry[] = [];
